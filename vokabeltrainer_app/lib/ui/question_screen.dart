@@ -1,4 +1,5 @@
 // lib/ui/question_screen.dart
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:vokabeltrainer_app/core/question_generator.dart';
@@ -19,13 +20,15 @@ class QuestionScreen extends StatefulWidget {
 }
 
 class _QuestionScreenState extends State<QuestionScreen> {
-  final LevelManager _manager = LevelManager();
-  late Question _question;
+  // Der aktuelle LevelManager erwartet keine Parameter – daher jetzt parameterlos.
+  late final LevelManager _manager = LevelManager();
 
-  bool _awaitingContinue = false;
+  late Question _question;
+  bool _awaitingWrongContinue = false;   // Warten nach falscher Antwort
+  bool _awaitingLevelContinue = false;   // Warten nach Level-Up
   int? _wrongIndex;
 
-  // Blur-Werte
+  // Blur-Konstanten
   static const double _maxBlur = 30.0;
   double _blur = _maxBlur;
 
@@ -35,11 +38,16 @@ class _QuestionScreenState extends State<QuestionScreen> {
   void initState() {
     super.initState();
 
+    // Fehler → Bild wieder komplett verschwommen
     _manager.onWrong = () => setState(() => _blur = _maxBlur);
+
+    // Level-Up → Bild vollständig zeigen & auf „Weiter“ warten
     _manager.onLevelUp = () {
+      final prevLevel = (_manager.level - 1).clamp(1, _manager.level);
       setState(() {
-        _blur = _maxBlur;
-        _levelImage = AssetImage('assets/images/${_manager.level}.jpg');
+        _awaitingLevelContinue = true;
+        _blur = 0.0;
+        _levelImage = AssetImage('assets/images/$prevLevel.jpg');
       });
     };
 
@@ -52,24 +60,26 @@ class _QuestionScreenState extends State<QuestionScreen> {
     setState(() => _question = _manager.nextQuestion());
   }
 
+  // ─────────────────────────  Antwort-Auswertung  ──────────────────────────────
   void _handleAnswer(int idx) {
-    if (_awaitingContinue) return;
+    if (_awaitingWrongContinue || _awaitingLevelContinue) return;
 
     final correct = _manager.answer(_question, idx);
 
     if (correct) {
-      // Direkt weiter
+      // Falls Level-Up ausgelöst wurde, ab hier warten wir auf den Weiter-Button
+      if (_awaitingLevelContinue) return;
+
       setState(() {
         _blur = _maxBlur * (1 - (_manager.streak / LevelManager.levelGoal));
         _question = _manager.nextQuestion();
         _wrongIndex = null;
-        _awaitingContinue = false;
+        _awaitingWrongContinue = false;
       });
     } else {
-      // Falsch: Button einfärben, „Weiter“ zeigen
       setState(() {
         _wrongIndex = idx;
-        _awaitingContinue = true;
+        _awaitingWrongContinue = true;
       });
     }
   }
@@ -79,10 +89,22 @@ class _QuestionScreenState extends State<QuestionScreen> {
       _blur = _maxBlur * (1 - (_manager.streak / LevelManager.levelGoal));
       _question = _manager.nextQuestion();
       _wrongIndex = null;
-      _awaitingContinue = false;
+      _awaitingWrongContinue = false;
     });
   }
 
+  void _nextLevel() {
+    setState(() {
+      _blur = _maxBlur;
+      _levelImage = AssetImage('assets/images/${_manager.level}.jpg');
+      _question = _manager.nextQuestion();
+      _awaitingLevelContinue = false;
+      _wrongIndex = null;
+      _awaitingWrongContinue = false;
+    });
+  }
+
+  // ─────────────────────────────  UI-Aufbau  ───────────────────────────────────
   @override
   Widget build(BuildContext context) {
     if (_levelImage == null) {
@@ -91,6 +113,43 @@ class _QuestionScreenState extends State<QuestionScreen> {
       );
     }
 
+    // ─────  Level geschafft – Bild freigelegt  ─────
+    if (_awaitingLevelContinue) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Level ${_manager.level - 1} geschafft!'),
+        ),
+        body: SafeArea(
+          child: Column(
+            children: [
+              AspectRatio(
+                aspectRatio: 16 / 9,
+                child: Image(image: _levelImage!, fit: BoxFit.cover),
+              ),
+              const SizedBox(height: 24),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'Super gemacht! Tippe auf „Weiter“, um das nächste Level zu starten.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 30),
+                child: ElevatedButton(
+                  onPressed: _nextLevel,
+                  child: const Text('Weiter'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // ─────  Regulärer Frage-Screen  ─────
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -100,7 +159,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ── (1) Bild oben ────────────────────────────────────────
+            // (1) Bild oben
             AspectRatio(
               aspectRatio: 16 / 9,
               child: ImageFiltered(
@@ -113,7 +172,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
               ),
             ),
 
-            // ── (2) Vokabel-Prompt ───────────────────────────────────
+            // (2) Vokabel-Prompt
             Padding(
               padding: const EdgeInsets.all(20),
               child: Text(
@@ -123,15 +182,15 @@ class _QuestionScreenState extends State<QuestionScreen> {
               ),
             ),
 
-            // ── (3) Antwort-Buttons ─────────────────────────────────
+            // (3) Antwort-Buttons
             ..._question.options.asMap().entries.map((e) {
               final i = e.key;
               final txt = e.value;
 
               Color? bg;
-              if (_awaitingContinue) {
+              if (_awaitingWrongContinue) {
                 if (i == _question.correctIndex) bg = Colors.green;
-                else if (i == _wrongIndex)       bg = Colors.red;
+                else if (i == _wrongIndex) bg = Colors.red;
               }
 
               return Padding(
@@ -150,8 +209,8 @@ class _QuestionScreenState extends State<QuestionScreen> {
               );
             }),
 
-            // ── (4) „Weiter“-Button nur bei falscher Antwort ─────────
-            if (_awaitingContinue)
+            // (4) „Weiter“-Button nach falscher Antwort
+            if (_awaitingWrongContinue)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 child: ElevatedButton(
