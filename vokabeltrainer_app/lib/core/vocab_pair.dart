@@ -1,16 +1,14 @@
 // lib/core/vocab_pair.dart
-
-/// Repräsentiert ein einzelnes Vokabel-Paar mit Fehler- und Erfolgszähler.
 class VocabPair {
-  final String en;
-  final String de;
-  int mistakes;
-  int corrects;    // neu: Zähler für richtig beantwortete Durchläufe
-
   VocabPair({
-    required this.en,
-    required this.de,
+    required this.prompt,
+    required this.answer,
     this.mistakes = 0,
     this.corrects = 0,
   });
+
+  final String prompt;
+  final String answer;
+  int mistakes;
+  int corrects;
 }

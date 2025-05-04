@@ -1,81 +1,68 @@
 // lib/ui/language_selection_screen.dart
-
 import 'package:flutter/material.dart';
-import 'package:vokabeltrainer_app/core/vocab_loader.dart';
-import 'package:vokabeltrainer_app/ui/question_screen.dart';
+import 'question_screen.dart';
 
 class LanguageSelectionScreen extends StatefulWidget {
-  const LanguageSelectionScreen({Key? key}) : super(key: key);
+  const LanguageSelectionScreen({super.key});
 
   @override
-  _LanguageSelectionScreenState createState() =>
+  State<LanguageSelectionScreen> createState() =>
       _LanguageSelectionScreenState();
 }
 
 class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
-  List<String> _langs = [];
-  String? _source;
-  String? _target;
+  static const _langs = [
+    {'name': 'Deutsch',    'code': 'de'},
+    {'name': 'English',    'code': 'en'},
+    {'name': 'Українська', 'code': 'uk'},
+    {'name': 'العربية',    'code': 'ar'},
+    {'name': 'دری (Dari)', 'code': 'fa'},
+  ];
 
-  @override
-  void initState() {
-    super.initState();
-    loadLanguages().then((list) {
-      setState(() => _langs = list);
-    });
-  }
+  String _src = 'de';
+  String _tgt = 'en';
 
   @override
   Widget build(BuildContext context) {
-    if (_langs.isEmpty) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
     return Scaffold(
-      appBar: AppBar(title: const Text('Sprachen auswählen')),
+      appBar: AppBar(title: const Text('Sprachauswahl')),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            DropdownButtonFormField<String>(
-              decoration:
-              const InputDecoration(labelText: 'Muttersprache'),
+            const Text('Ausgangssprache', style: TextStyle(fontSize: 18)),
+            DropdownButton<String>(
+              value: _src,
               items: _langs
                   .map((l) => DropdownMenuItem(
-                  value: l, child: Text(l)))
+                value: l['code'],
+                child: Text(l['name']!),
+              ))
                   .toList(),
-              value: _source,
-              onChanged: (v) => setState(() => _source = v),
+              onChanged: (v) => setState(() => _src = v!),
             ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                  labelText: 'Zu lernende Sprache'),
+            const SizedBox(height: 24),
+            const Text('Zielsprache', style: TextStyle(fontSize: 18)),
+            DropdownButton<String>(
+              value: _tgt,
               items: _langs
                   .map((l) => DropdownMenuItem(
-                  value: l, child: Text(l)))
+                value: l['code'],
+                child: Text(l['name']!),
+              ))
                   .toList(),
-              value: _target,
-              onChanged: (v) => setState(() => _target = v),
+              onChanged: (v) => setState(() => _tgt = v!),
             ),
             const Spacer(),
             ElevatedButton(
-              onPressed: (_source != null &&
-                  _target != null &&
-                  _source != _target)
-                  ? () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute(
-                    builder: (_) => QuestionScreen(
-                      source: _source!,
-                      target: _target!,
-                    ),
-                  ),
-                );
-              }
-                  : null,
-              child: const Text('Starten'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      QuestionScreen(source: _src, target: _tgt),
+                ),
+              ),
+              child: const Text('Start'),
             ),
           ],
         ),

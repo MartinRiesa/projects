@@ -9,18 +9,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  flutter_tts: ^4.2.2          # TTS-API ≥ v4 (benötigt für den Code)
+  flutter_tts: ^4.2.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.1        # aktuelle Lint-Regeln
+  flutter_lints: ^3.0.1
 
 flutter:
   uses-material-design: true
 
   assets:
-    # CSV mit allen Wortpaaren
-    - assets/Vokabeln alle.csv
-    # Level-Bilder (1.jpg … n.jpg)
     - assets/images/
+    - assets/Vokabeln alle.csv    # ← Hier wird Deine CSV eingebunden
