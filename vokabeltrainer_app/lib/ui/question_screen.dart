@@ -1,5 +1,4 @@
 // lib/ui/question_screen.dart
-
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:vokabeltrainer_app/core/question_generator.dart';
@@ -16,56 +15,73 @@ class QuestionScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  _QuestionScreenState createState() => _QuestionScreenState();
+  State<QuestionScreen> createState() => _QuestionScreenState();
 }
 
 class _QuestionScreenState extends State<QuestionScreen> {
   final LevelManager _manager = LevelManager();
   late Question _question;
-  bool _answered = false;
+
+  bool _awaitingContinue = false;   // nur nach falscher Antwort
   int? _wrongIndex;
-  static const double _maxBlur = 30.0;    // erhöht von 10 auf 30
-  double _blur = _maxBlur;                // initial maximal verschwommen
+
+  // Blur-Werte
+  static const double _maxBlur = 30.0;
+  double _blur = _maxBlur;
+
   ImageProvider? _levelImage;
 
   @override
   void initState() {
     super.initState();
-    _manager.onWrong = () {
-      setState(() => _blur = _maxBlur);
-    };
+
+    // Callbacks aus dem Algorithmus
+    _manager.onWrong  = () => setState(() => _blur = _maxBlur);
     _manager.onLevelUp = () {
       setState(() {
-        _blur = _maxBlur;
+        _blur       = _maxBlur;
         _levelImage = AssetImage('assets/images/${_manager.level}.jpg');
       });
     };
-    _loadInitial();
+
+    _initFirstQuestion();
   }
 
-  Future<void> _loadInitial() async {
+  Future<void> _initFirstQuestion() async {
     await _manager.init();
     _levelImage = AssetImage('assets/images/${_manager.level}.jpg');
     setState(() => _question = _manager.nextQuestion());
   }
 
   void _handleAnswer(int idx) {
-    if (_answered) return;
-    final correct = _manager.answer(_question, idx);
-    if (correct) {
+    if (_awaitingContinue) return;              // Doppel-Klick-Schutz
+
+    final isCorrect = _manager.answer(_question, idx);
+
+    if (isCorrect) {
+      // Sofort weiter: Blur anpassen & neue Frage holen
       setState(() {
-        // stärkere Reduktion: pro Streak-Punkt 1/10 von max
         _blur = _maxBlur * (1 - (_manager.streak / LevelManager.levelGoal));
-        _question = _manager.nextQuestion();
-        _wrongIndex = null;
-        _answered = false;
+        _question      = _manager.nextQuestion();
+        _wrongIndex    = null;
+        _awaitingContinue = false;              // bleibt false
       });
     } else {
+      // Falsch: Antwort einfärben und „Weiter“-Button anzeigen
       setState(() {
-        _wrongIndex = idx;
-        _answered = true;
+        _wrongIndex       = idx;
+        _awaitingContinue = true;
       });
     }
+  }
+
+  void _nextQuestionAfterWrong() {
+    setState(() {
+      _blur = _maxBlur * (1 - (_manager.streak / LevelManager.levelGoal));
+      _question          = _manager.nextQuestion();
+      _wrongIndex        = null;
+      _awaitingContinue  = false;
+    });
   }
 
   @override
@@ -75,66 +91,74 @@ class _QuestionScreenState extends State<QuestionScreen> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Level ${_manager.level} – Streak ${_manager.streak}/${LevelManager.levelGoal}',
-        ),
+        title: Text('Level ${_manager.level} – Streak ${_manager.streak}/${LevelManager.levelGoal}'),
       ),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image(image: _levelImage!, fit: BoxFit.cover),
-          ),
-          if (_blur > 0)
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: _blur, sigmaY: _blur),
-                child: Container(color: Colors.black.withOpacity(0)),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // ── (1) Prompt ───────────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                _question.prompt,                         // nur das Wort!
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
               ),
             ),
-          Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Text(
-                  _question.prompt,
-                  style: const TextStyle(fontSize: 20, color: Colors.white),
-                ),
-              ),
-              ..._question.options.asMap().entries.map((e) {
-                final idx = e.key, txt = e.value;
-                Color? bg;
-                if (_answered) {
-                  if (idx == _question.correctIndex) bg = Colors.green;
-                  else if (idx == _wrongIndex) bg = Colors.red;
-                }
-                return Padding(
-                  padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(backgroundColor: bg),
-                    onPressed: () => _handleAnswer(idx),
-                    child: Text(txt),
+
+            // ── (2) Antwort-Buttons ────────────────────────────────
+            ..._question.options.asMap().entries.map((e) {
+              final i   = e.key;
+              final txt = e.value;
+
+              Color? bg;
+              if (_awaitingContinue) {
+                if (i == _question.correctIndex) bg = Colors.green;
+                else if (i == _wrongIndex)       bg = Colors.red;
+              }
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: bg,
+                    minimumSize: const Size.fromHeight(48),
                   ),
-                );
-              }).toList(),
-              if (_answered)
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _blur = _maxBlur *
-                          (1 - (_manager.streak / LevelManager.levelGoal));
-                      _question = _manager.nextQuestion();
-                      _answered = false;
-                      _wrongIndex = null;
-                    });
-                  },
+                  onPressed: () => _handleAnswer(i),
+                  child: Text(txt),
+                ),
+              );
+            }),
+
+            // ── (3) „Weiter“ nur nach falscher Antwort ─────────────
+            if (_awaitingContinue)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: ElevatedButton(
+                  onPressed: _nextQuestionAfterWrong,
                   child: const Text('Weiter'),
                 ),
-            ],
-          ),
-        ],
+              ),
+
+            const Spacer(),
+
+            // ── (4) Bild unten, feste 16:9-Box ─────────────────────
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: _blur, sigmaY: _blur),
+                child: Image(
+                  image: _levelImage!,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

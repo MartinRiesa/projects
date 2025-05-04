@@ -9,15 +9,17 @@ import 'package:vokabeltrainer_app/core/question_generator.dart';
 
 typedef VoidCallback = void Function();
 
-/// Steuert Level-Fortschritt, Streak-Logik und gewichtet die Auswahl.
+/// Steuert Level-Fortschritt, Streak-Logik und gewichtete Auswahl.
 class LevelManager {
   static const int levelGoal = 10;
   final Random _rand = Random();
 
-  late final List<VocabPair> _pairs;
+  late List<VocabPair> _pairs;
+  VocabPair? _lastPair;
+
   int level = 1;
   int streak = 0;
-  VocabPair? _lastPair;
+
   VoidCallback? onWrong;
   VoidCallback? onLevelUp;
 
@@ -25,13 +27,12 @@ class LevelManager {
     _pairs = await loadWordPairs();
   }
 
-  /// Gewichtete Auswahl, Gewicht = (mistakes+1)/(corrects+1)
+  /// Gewichtete Auswahl, Gewicht = (mistakes + 1) / (corrects + 1)
   VocabPair _pickWeighted(List<VocabPair> list) {
-    final weights = list
-        .map((p) => (p.mistakes + 1) / (p.corrects + 1))
-        .toList();
+    final weights = list.map((p) => (p.mistakes + 1) / (p.corrects + 1)).toList();
     final total = weights.fold<double>(0, (sum, w) => sum + w);
     var r = _rand.nextDouble() * total;
+
     for (var i = 0; i < list.length; i++) {
       r -= weights[i];
       if (r <= 0) return list[i];
@@ -51,14 +52,12 @@ class LevelManager {
     _lastPair = target;
 
     final others = List<VocabPair>.from(subset)..remove(target);
-    final wrongPool =
-    others.where((p) => p.mistakes > 0).toList()..shuffle(_rand);
+    final wrongPool = others.where((p) => p.mistakes > 0).toList()..shuffle(_rand);
+
     final distractors = <String>[];
     distractors.addAll(wrongPool.take(2).map((p) => p.de));
 
-    final remaining = others
-        .where((p) => !wrongPool.take(2).contains(p))
-        .toList()
+    final remaining = others.where((p) => !wrongPool.take(2).contains(p)).toList()
       ..shuffle(_rand);
     while (distractors.length < 3 && remaining.isNotEmpty) {
       distractors.add(remaining.removeLast().de);
@@ -67,29 +66,31 @@ class LevelManager {
     final options = <String>[target.de, ...distractors]..shuffle(_rand);
 
     return Question(
-      prompt: 'Was bedeutet "${target.en}" auf Deutsch?',
+      // ► Nur das abzufragende Wort (Englisch) – kein Satz mehr
+      prompt: target.en,
       options: options,
       correctIndex: options.indexOf(target.de),
       sourcePair: target,
     );
   }
 
-  /// Verarbeitet eine Antwort; erhöht corrects oder mistakes, managt Streak/Level.
+  /// Verarbeitet eine Antwort; aktualisiert Zähler, Streak & Level.
   bool answer(Question q, int index) {
     final isCorrect = index == q.correctIndex;
     final pair = q.sourcePair;
+
     if (isCorrect) {
-      pair.corrects++;   // neu: Zähler erhöhen
+      pair.corrects++;
       streak++;
       if (streak >= levelGoal) {
         level++;
         streak = 0;
-        if (onLevelUp != null) onLevelUp!();
+        onLevelUp?.call();
       }
     } else {
       streak = 0;
       pair.mistakes++;
-      if (onWrong != null) onWrong!();
+      onWrong?.call();
     }
     return isCorrect;
   }
