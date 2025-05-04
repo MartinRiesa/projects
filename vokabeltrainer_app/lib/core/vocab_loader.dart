@@ -1,29 +1,33 @@
+// lib/core/vocab_loader.dart
+
 import 'dart:convert';
 import 'package:flutter/services.dart' show rootBundle;
-import 'vocab_pair.dart';
+import 'package:vokabeltrainer_app/core/vocab_pair.dart';
 
-/// Lädt alle Vokabeln aus einer einzigen CSV.
-/// Kopfzeile = Sprachnamen (z. B. Deutsch;Englisch;Ukrainisch;Arabisch)
-/// Gibt neben der Wortliste die gefundene Kopfzeile zurück.
-Future<(List<VocabPair>, List<String>)> loadAllPairs() async {
-  final csv = await rootBundle.loadString('assets/Vokabeln alle.csv');
-  final lines = const LineSplitter().convert(csv.trim());
+/// Liest die erste Zeile der CSV und liefert die verfügbaren Sprachen.
+Future<List<String>> loadLanguages() async {
+  final raw = await rootBundle.loadString('assets/Vokabeln alle.csv');
+  final firstLine = raw.split('\n').first;
+  return firstLine.split(';').map((s) => s.trim()).toList();
+}
 
-  if (lines.isEmpty) return (<VocabPair>[], <String>[]);
-
-  final header = lines.first.split(';').map((s) => s.trim()).toList();
+/// Lädt Wortpaare aus der CSV-Datei assets/Vokabeln alle.csv
+/// und erstellt VocabPair-Instanzen mit Fehlerzähler.
+Future<List<VocabPair>> loadWordPairs() async {
+  final raw = await rootBundle.loadString('assets/Vokabeln alle.csv');
+  final lines = const LineSplitter().convert(raw);
   final pairs = <VocabPair>[];
 
-  for (final line in lines.skip(1)) {
-    final cols = line.split(';');
-    if (cols.length != header.length) continue;
-
-    final map = <String, String>{};
-    for (var i = 0; i < header.length; i++) {
-      final word = cols[i].trim();
-      if (word.isNotEmpty) map[header[i]] = word;
+  for (var i = 1; i < lines.length; i++) {
+    final line = lines[i].trim();
+    if (line.isEmpty) continue;
+    final parts = line.split(';');
+    if (parts.length >= 2) {
+      pairs.add(VocabPair(
+        en: parts[0].trim(),
+        de: parts[1].trim(),
+      ));
     }
-    if (map.length >= 2) pairs.add(VocabPair(map));
   }
-  return (pairs, header);
+  return pairs;
 }

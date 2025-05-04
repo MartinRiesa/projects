@@ -1,94 +1,82 @@
+// lib/ui/language_selection_screen.dart
+
 import 'package:flutter/material.dart';
-import '../core/vocab_loader.dart';
-import 'question_screen.dart';
+import 'package:vokabeltrainer_app/core/vocab_loader.dart';
+import 'package:vokabeltrainer_app/ui/question_screen.dart';
 
 class LanguageSelectionScreen extends StatefulWidget {
-  const LanguageSelectionScreen({super.key});
+  const LanguageSelectionScreen({Key? key}) : super(key: key);
 
   @override
-  State<LanguageSelectionScreen> createState() => _LangSelState();
+  _LanguageSelectionScreenState createState() =>
+      _LanguageSelectionScreenState();
 }
 
-class _LangSelState extends State<LanguageSelectionScreen> {
+class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
   List<String> _langs = [];
-  String? _learn;   // Lernsprache
-  String? _native;  // Muttersprache
+  String? _source;
+  String? _target;
 
   @override
   void initState() {
     super.initState();
-    _init();
-  }
-
-  Future<void> _init() async {
-    final (_, header) = await loadAllPairs();
-    setState(() {
-      _langs = header;
-      _learn  = header.elementAtOrNull(1) ?? header.first;
-      _native = header.first;
+    loadLanguages().then((list) {
+      setState(() => _langs = list);
     });
   }
-
-  void _setLearn(String v) => setState(() {
-    _learn = v;
-    if (_learn == _native) {
-      // automatisch tauschen, damit jede Sprache wählbar ist
-      _native =
-          _langs.firstWhere((l) => l != _learn, orElse: () => _native!);
-    }
-  });
-
-  void _setNative(String v) => setState(() {
-    _native = v;
-    if (_learn == _native) {
-      _learn = _langs.firstWhere((l) => l != _native, orElse: () => _learn!);
-    }
-  });
 
   @override
   Widget build(BuildContext context) {
     if (_langs.isEmpty) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Sprachauswahl')),
+      appBar: AppBar(title: const Text('Sprachen auswählen')),
       body: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Ich möchte lernen …', style: TextStyle(fontSize: 18)),
-            DropdownButton<String>(
-              value: _learn,
+            DropdownButtonFormField<String>(
+              decoration:
+              const InputDecoration(labelText: 'Muttersprache'),
               items: _langs
-                  .map((l) => DropdownMenuItem(value: l, child: Text(l)))
+                  .map((l) => DropdownMenuItem(
+                  value: l, child: Text(l)))
                   .toList(),
-              onChanged: (v) => _setLearn(v!),
+              value: _source,
+              onChanged: (v) => setState(() => _source = v),
             ),
-            const SizedBox(height: 24),
-            const Text('Meine Muttersprache', style: TextStyle(fontSize: 18)),
-            DropdownButton<String>(
-              value: _native,
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              decoration: const InputDecoration(
+                  labelText: 'Zu lernende Sprache'),
               items: _langs
-                  .map((l) => DropdownMenuItem(value: l, child: Text(l)))
+                  .map((l) => DropdownMenuItem(
+                  value: l, child: Text(l)))
                   .toList(),
-              onChanged: (v) => _setNative(v!),
+              value: _target,
+              onChanged: (v) => setState(() => _target = v),
             ),
             const Spacer(),
-            Center(
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.play_arrow),
-                label: const Text('Start'),
-                onPressed: () => Navigator.pushReplacement(
-                  context,
+            ElevatedButton(
+              onPressed: (_source != null &&
+                  _target != null &&
+                  _source != _target)
+                  ? () {
+                Navigator.of(context).pushReplacement(
                   MaterialPageRoute(
-                    builder: (_) =>
-                        QuestionScreen(source: _learn!, target: _native!),
+                    builder: (_) => QuestionScreen(
+                      source: _source!,
+                      target: _target!,
+                    ),
                   ),
-                ),
-              ),
-            )
+                );
+              }
+                  : null,
+              child: const Text('Starten'),
+            ),
           ],
         ),
       ),
