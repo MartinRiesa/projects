@@ -9,6 +9,7 @@ import 'package:vokabeltrainer_app/core/question_generator.dart';
 
 typedef VoidCallback = void Function();
 
+/// Steuert Level-Fortschritt, Streak-Logik und gewichtet die Auswahl.
 class LevelManager {
   static const int levelGoal = 10;
   final Random _rand = Random();
@@ -17,23 +18,28 @@ class LevelManager {
   int level = 1;
   int streak = 0;
   VocabPair? _lastPair;
-  VoidCallback? onWrong;       // wird bei falscher Antwort aufgerufen
-  VoidCallback? onLevelUp;     // wird bei Levelwechsel aufgerufen
+  VoidCallback? onWrong;
+  VoidCallback? onLevelUp;
 
   Future<void> init() async {
     _pairs = await loadWordPairs();
   }
 
+  /// Gewichtete Auswahl, Gewicht = (mistakes+1)/(corrects+1)
   VocabPair _pickWeighted(List<VocabPair> list) {
-    final totalWeight = list.fold<int>(0, (s, p) => s + p.mistakes + 1);
-    var r = _rand.nextInt(totalWeight);
-    for (var p in list) {
-      r -= (p.mistakes + 1);
-      if (r < 0) return p;
+    final weights = list
+        .map((p) => (p.mistakes + 1) / (p.corrects + 1))
+        .toList();
+    final total = weights.fold<double>(0, (sum, w) => sum + w);
+    var r = _rand.nextDouble() * total;
+    for (var i = 0; i < list.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return list[i];
     }
     return list.last;
   }
 
+  /// Erzeugt die nächste Frage aus dem aktuellen Level-Pool.
   Question nextQuestion() {
     final maxIndex = (level * 7).clamp(1, _pairs.length);
     final subset = _pairs.sublist(0, maxIndex);
@@ -45,10 +51,15 @@ class LevelManager {
     _lastPair = target;
 
     final others = List<VocabPair>.from(subset)..remove(target);
-    final wrongPool = others.where((p) => p.mistakes > 0).toList()..shuffle(_rand);
+    final wrongPool =
+    others.where((p) => p.mistakes > 0).toList()..shuffle(_rand);
     final distractors = <String>[];
     distractors.addAll(wrongPool.take(2).map((p) => p.de));
-    final remaining = others.where((p) => !wrongPool.take(2).contains(p)).toList()..shuffle(_rand);
+
+    final remaining = others
+        .where((p) => !wrongPool.take(2).contains(p))
+        .toList()
+      ..shuffle(_rand);
     while (distractors.length < 3 && remaining.isNotEmpty) {
       distractors.add(remaining.removeLast().de);
     }
@@ -63,10 +74,12 @@ class LevelManager {
     );
   }
 
+  /// Verarbeitet eine Antwort; erhöht corrects oder mistakes, managt Streak/Level.
   bool answer(Question q, int index) {
     final isCorrect = index == q.correctIndex;
     final pair = q.sourcePair;
     if (isCorrect) {
+      pair.corrects++;   // neu: Zähler erhöhen
       streak++;
       if (streak >= levelGoal) {
         level++;
