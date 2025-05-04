@@ -1,16 +1,13 @@
 // lib/core/vocab_pair.dart
-
-/// Repräsentiert ein einzelnes Vokabel-Paar mit Fehler- und Erfolgszähler.
 class VocabPair {
-  final String en;
-  final String de;
-  int mistakes;
-  int corrects;    // neu: Zähler für richtig beantwortete Durchläufe
+  /// Map ‹ISO-Code → Wort›, z. B. {'de':'Hund', 'en':'dog', 'uk':'пес'}
+  final Map<String, String> t;
 
-  VocabPair({
-    required this.en,
-    required this.de,
-    this.mistakes = 0,
-    this.corrects = 0,
-  });
+  int mistakes = 0;
+  int corrects = 0;
+
+  VocabPair(this.t);
+
+  /// Liefert das Wort für eine Sprache (oder '' falls nicht vorhanden).
+  String word(String lang) => t[lang] ?? '';
 }

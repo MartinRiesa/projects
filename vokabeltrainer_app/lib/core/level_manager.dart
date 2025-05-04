@@ -1,97 +1,86 @@
 // lib/core/level_manager.dart
-
-import 'dart:async';
 import 'dart:math';
-
-import 'package:vokabeltrainer_app/core/vocab_loader.dart';
-import 'package:vokabeltrainer_app/core/vocab_pair.dart';
-import 'package:vokabeltrainer_app/core/question_generator.dart';
+import 'vocab_pair.dart';
+import 'vocab_loader.dart';
+import 'question_generator.dart';
 
 typedef VoidCallback = void Function();
 
-/// Steuert Level-Fortschritt, Streak-Logik und gewichtete Auswahl.
 class LevelManager {
   static const int levelGoal = 10;
   final Random _rand = Random();
 
   late List<VocabPair> _pairs;
-  VocabPair? _lastPair;
+  late String _src;
+  late String _dst;
 
+  VocabPair? _lastPair;
   int level = 1;
   int streak = 0;
 
   VoidCallback? onWrong;
   VoidCallback? onLevelUp;
 
-  Future<void> init() async {
-    _pairs = await loadWordPairs();
+  /// Lädt ALLE Paare und merkt sich die gewählte Sprachrichtung.
+  Future<List<String>> init(String srcLang, String dstLang) async {
+    _src = srcLang;
+    _dst = dstLang;
+    final (pairs, langs) = await loadAllPairs();
+    // Nur Paare behalten, die beide Sprachen enthalten
+    _pairs = pairs.where((p) => p.word(_src).isNotEmpty && p.word(_dst).isNotEmpty).toList();
+    return langs;                              // für UI-Dropdowns
   }
 
-  /// Gewichtete Auswahl, Gewicht = (mistakes + 1) / (corrects + 1)
+  // Gewichtete Auswahl bleibt unverändert
   VocabPair _pickWeighted(List<VocabPair> list) {
-    final weights = list.map((p) => (p.mistakes + 1) / (p.corrects + 1)).toList();
-    final total = weights.fold<double>(0, (sum, w) => sum + w);
+    final w = list.map((p) => (p.mistakes + 1) / (p.corrects + 1)).toList();
+    final total = w.fold<double>(0, (s, x) => s + x);
     var r = _rand.nextDouble() * total;
-
     for (var i = 0; i < list.length; i++) {
-      r -= weights[i];
+      r -= w[i];
       if (r <= 0) return list[i];
     }
     return list.last;
   }
 
-  /// Erzeugt die nächste Frage aus dem aktuellen Level-Pool.
   Question nextQuestion() {
-    final maxIndex = (level * 7).clamp(1, _pairs.length);
-    final subset = _pairs.sublist(0, maxIndex);
+    final max = (level * 7).clamp(1, _pairs.length);
+    final pool = _pairs.sublist(0, max);
 
     VocabPair target;
-    do {
-      target = _pickWeighted(subset);
-    } while (_lastPair != null && subset.length > 1 && target == _lastPair);
+    do { target = _pickWeighted(pool); }
+    while (_lastPair != null && pool.length > 1 && target == _lastPair);
     _lastPair = target;
 
-    final others = List<VocabPair>.from(subset)..remove(target);
+    // Distraktoren-Regel: max 2 aus Fehler-Pool
+    final others = List<VocabPair>.from(pool)..remove(target);
     final wrongPool = others.where((p) => p.mistakes > 0).toList()..shuffle(_rand);
 
-    final distractors = <String>[];
-    distractors.addAll(wrongPool.take(2).map((p) => p.de));
+    final distractors = <String>[
+      ...wrongPool.take(2).map((p) => p.word(_dst)),
+      ...others.where((p) => !wrongPool.contains(p)).map((p) => p.word(_dst)),
+    ]..shuffle(_rand);
+    distractors.length = 3;
 
-    final remaining = others.where((p) => !wrongPool.take(2).contains(p)).toList()
-      ..shuffle(_rand);
-    while (distractors.length < 3 && remaining.isNotEmpty) {
-      distractors.add(remaining.removeLast().de);
-    }
-
-    final options = <String>[target.de, ...distractors]..shuffle(_rand);
+    final options = <String>[target.word(_dst), ...distractors]..shuffle(_rand);
 
     return Question(
-      // ► Nur das abzufragende Wort (Englisch) – kein Satz mehr
-      prompt: target.en,
-      options: options,
-      correctIndex: options.indexOf(target.de),
-      sourcePair: target,
+      prompt       : target.word(_src),
+      options      : options,
+      correctIndex : options.indexOf(target.word(_dst)),
+      sourcePair   : target,
     );
   }
 
-  /// Verarbeitet eine Antwort; aktualisiert Zähler, Streak & Level.
-  bool answer(Question q, int index) {
-    final isCorrect = index == q.correctIndex;
-    final pair = q.sourcePair;
-
-    if (isCorrect) {
-      pair.corrects++;
-      streak++;
-      if (streak >= levelGoal) {
-        level++;
-        streak = 0;
-        onLevelUp?.call();
-      }
+  bool answer(Question q, int i) {
+    final correct = i == q.correctIndex;
+    final p = q.sourcePair;
+    if (correct) {
+      p.corrects++; streak++;
+      if (streak >= levelGoal) { level++; streak = 0; onLevelUp?.call(); }
     } else {
-      streak = 0;
-      pair.mistakes++;
-      onWrong?.call();
+      p.mistakes++; streak = 0; onWrong?.call();
     }
-    return isCorrect;
+    return correct;
   }
 }
