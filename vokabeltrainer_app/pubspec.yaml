@@ -22,7 +22,5 @@ flutter:
 
   assets:
     - assets/Vokabeln alle.csv
-    - assets/images/1.jpg
-    - assets/images/2.jpg
-    - assets/images/3.jpg
-    # usw.
+    # kompletter Bild-Ordner – damit stehen alle Level-Bilder (1.jpg … n.jpg) zur Verfügung
+    - assets/images/
