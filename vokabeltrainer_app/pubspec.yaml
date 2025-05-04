@@ -1,26 +1,26 @@
 name: vokabeltrainer_app
-description: "Ein einfacher Vokabeltrainer in Flutter."
-publish_to: 'none'
+description: Ein spielerischer Vokabel-Trainer
+publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.7.0 <4.0.0'
+  sdk: ">=3.3.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.8
-  flutter_tts: ^3.7.0
+  flutter_tts: ^4.2.2          # TTS-API ≥ v4 (benötigt für den Code)
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
+  flutter_lints: ^3.0.1        # aktuelle Lint-Regeln
 
 flutter:
   uses-material-design: true
 
   assets:
+    # CSV mit allen Wortpaaren
     - assets/Vokabeln alle.csv
-    # kompletter Bild-Ordner – damit stehen alle Level-Bilder (1.jpg … n.jpg) zur Verfügung
+    # Level-Bilder (1.jpg … n.jpg)
     - assets/images/
