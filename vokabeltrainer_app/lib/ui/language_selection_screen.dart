@@ -1,14 +1,9 @@
 // lib/ui/language_selection_screen.dart
-//
-// Dialog zur Auswahl von Lern- und Muttersprache.
-// Speichert die Auswahl in GameState via Provider.
-
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../state/game_state.dart';
+import 'question_screen.dart';
 
 class LanguageSelectionScreen extends StatefulWidget {
-  const LanguageSelectionScreen({Key? key}) : super(key: key);
+  const LanguageSelectionScreen({super.key});
 
   @override
   State<LanguageSelectionScreen> createState() =>
@@ -16,60 +11,58 @@ class LanguageSelectionScreen extends StatefulWidget {
 }
 
 class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
-  late String _learn;
-  late String _native;
+  static const _langs = [
+    {'name': 'Deutsch',    'code': 'de'},
+    {'name': 'English',    'code': 'en'},
+    {'name': 'Українська', 'code': 'uk'},
+    {'name': 'العربية',    'code': 'ar'},
+    {'name': 'دری (Dari)', 'code': 'fa'},
+  ];
 
-  @override
-  void initState() {
-    super.initState();
-    final state = context.read<GameState>();
-    _learn  = state.learnLang;
-    _native = state.nativeLang;
-  }
+  String _src = 'de';
+  String _tgt = 'en';
 
   @override
   Widget build(BuildContext context) {
-    final languages = ['Deutsch', 'English', 'Spanish', 'French'];
-
     return Scaffold(
       appBar: AppBar(title: const Text('Sprachauswahl')),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         child: Column(
           children: [
-            const Text('Lernsprache'),
+            const Text('Ausgangssprache', style: TextStyle(fontSize: 18)),
             DropdownButton<String>(
-              value: _learn,
-              items: languages
-                  .map((l) => DropdownMenuItem(value: l, child: Text(l)))
+              value: _src,
+              items: _langs
+                  .map((l) => DropdownMenuItem(
+                value: l['code'],
+                child: Text(l['name']!),
+              ))
                   .toList(),
-              onChanged: (v) => setState(() => _learn = v!),
+              onChanged: (v) => setState(() => _src = v!),
             ),
             const SizedBox(height: 24),
-            const Text('Muttersprache'),
+            const Text('Zielsprache', style: TextStyle(fontSize: 18)),
             DropdownButton<String>(
-              value: _native,
-              items: languages
-                  .map((l) => DropdownMenuItem(value: l, child: Text(l)))
+              value: _tgt,
+              items: _langs
+                  .map((l) => DropdownMenuItem(
+                value: l['code'],
+                child: Text(l['name']!),
+              ))
                   .toList(),
-              onChanged: (v) => setState(() => _native = v!),
+              onChanged: (v) => setState(() => _tgt = v!),
             ),
             const Spacer(),
             ElevatedButton(
-              onPressed: () {
-                if (_learn == _native) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                          'Lern- und Muttersprache müssen verschieden sein'),
-                    ),
-                  );
-                  return;
-                }
-                context.read<GameState>().setLanguages(_learn, _native);
-                Navigator.pop(context);
-              },
-              child: const Text('Speichern'),
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      QuestionScreen(source: _src, target: _tgt),
+                ),
+              ),
+              child: const Text('Start'),
             ),
           ],
         ),

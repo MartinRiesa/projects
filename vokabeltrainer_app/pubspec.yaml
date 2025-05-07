@@ -1,30 +1,24 @@
 name: vokabeltrainer_app
-description: Ein Flutter-Vokabeltrainer.
-
-publish_to: "none"          # private App
-
+description: Ein spielerischer Vokabel-Trainer
+publish_to: "none"
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.2.0 <4.0.0"
+  sdk: ">=3.3.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-
-  provider: ^6.0.5           # State-Management
-  flutter_tts: ^3.8.0        # Text-to-Speech
-  cupertino_icons: ^1.0.6
+  flutter_tts: ^4.2.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.0
+  flutter_lints: ^3.0.1
 
 flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/        # deine Bilder
-    - assets/audio/         # ggf. Audio-Dateien
-    - assets/data/          # **alles** in diesem Ordner, also auch vokabeln_alle.csv
+    - assets/images/
+    - assets/Vokabeln alle.csv    # ← Hier wird Deine CSV eingebunden
