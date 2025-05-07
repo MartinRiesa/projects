@@ -2,7 +2,7 @@
 import 'package:flutter/services.dart' show rootBundle;
 import 'vocab_pair.dart';
 
-/// Lädt die CSV assets/Vokabeln alle.csv und liefert
+/// Lädt die CSV assets/Vokabeln_alle.csv und liefert
 /// für die ISO-Codes src→tgt eine Liste von VocabPair.
 class VocabLoader {
   /// Mappt ISO-Sprachcode → Spaltenname in der CSV.
@@ -16,7 +16,7 @@ class VocabLoader {
 
   static Future<List<VocabPair>> load(String src, String tgt) async {
     // 1) Datei einlesen
-    final raw = await rootBundle.loadString('assets/Vokabeln alle.csv');
+    final raw = await rootBundle.loadString('assets/data/Vokabeln_alle.csv');
     final lines = raw
         .split(RegExp(r'\r?\n'))
         .where((l) => l.trim().isNotEmpty)
