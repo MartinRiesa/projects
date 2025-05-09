@@ -3,76 +3,78 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:vokabeltrainer_app/core/level_manager.dart';
+import 'package:vokabeltrainer_app/core/level_names.dart';
 import 'package:vokabeltrainer_app/core/question_generator.dart';
 
 class QuestionScreen extends StatefulWidget {
   final String source; // Muttersprache
   final String target; // Zielsprache
-
-  const QuestionScreen({
-    Key? key,
-    required this.source,
-    required this.target,
-  }) : super(key: key);
+  const QuestionScreen({super.key, required this.source, required this.target});
 
   @override
   State<QuestionScreen> createState() => _QuestionScreenState();
 }
 
 class _QuestionScreenState extends State<QuestionScreen> {
-  // ────────────────────────────────────────────────────────────────────────────
-  // EINZIGE ÄNDERUNG: Languages vertauscht
-  // ────────────────────────────────────────────────────────────────────────────
+  // ─── Manager (Sprachen vertauscht) ─────────────────────────────
   late final LevelManager _manager =
   LevelManager(sourceLang: widget.target, targetLang: widget.source);
 
   late Question _question;
 
-  bool _awaitWrong = false;
-  bool _awaitLevelUp = false;
-  int? _wrongIndex;
-
+  // ─── Levelnamen & Bilder ───────────────────────────────────────
+  String _levelName = '';
+  String _prevLevelName = '';
   static const double _maxBlur = 30.0;
   double _blur = _maxBlur;
   ImageProvider? _levelImg;
 
+  // ─── Statusflags ───────────────────────────────────────────────
+  bool _awaitWrong = false;
+  bool _awaitLevelUp = false;
+  int? _wrongIndex;
+
   bool _loadError = false;
   String _errorMsg = '';
 
+  // ─── TTS ───────────────────────────────────────────────────────
   final FlutterTts _tts = FlutterTts();
   bool _ttsReady = false;
   bool _autoTts = true;
 
+  // ───────────────────────────────────────────────────────────────
+  // LEBENSZYKLUS
+  // ───────────────────────────────────────────────────────────────
   @override
   void initState() {
     super.initState();
     _setupTts().then((_) => _initManager());
   }
 
+  @override
+  void dispose() {
+    _tts.stop();
+    super.dispose();
+  }
+
+  // ───────────────────────────────────────────────────────────────
+  // TTS
+  // ───────────────────────────────────────────────────────────────
   Future<void> _setupTts() async {
-    final locale = _langToLocale(widget.target); // prompt bleibt Zielsprache
-    await _tts.setLanguage(locale);
+    await _tts.setLanguage(_langToLocale(widget.target));
     await _tts.setSpeechRate(0.45);
     await _tts.setPitch(1.0);
     _ttsReady = true;
   }
 
-  String _langToLocale(String code) {
-    switch (code) {
-      case 'de':
-        return 'de-DE';
-      case 'en':
-        return 'en-US';
-      case 'uk':
-        return 'uk-UA';
-      case 'ar':
-        return 'ar-SA';
-      case 'fa':
-        return 'fa-AF';
-      default:
-        return 'en-US';
-    }
-  }
+  String _langToLocale(String code) => switch (code) {
+    'de' => 'de-DE',
+    'en' => 'en-US',
+    'uk' => 'uk-UA',
+    'ar' => 'ar-SA',
+    'fa' => 'fa-AF',
+    _ => 'en-US',
+  };
 
   Future<void> _speak(String text) async {
     if (!_ttsReady) return;
@@ -84,19 +86,47 @@ class _QuestionScreenState extends State<QuestionScreen> {
   Future<void> _speakIfNeeded() =>
       _autoTts ? _speak(_question.prompt) : Future.value();
 
+  // ───────────────────────────────────────────────────────────────
+  // Bild-Helfer – versucht .jpg, dann .png
+  // ───────────────────────────────────────────────────────────────
+  ImageProvider _imageForLevel(int level) {
+    final jpg = AssetImage('assets/images/$level.jpg');
+    final png = AssetImage('assets/images/$level.png');
+    // Wir testen synchron, ob das JPG existiert (Flutter löst bei
+    // fehlender Ressource ein Error-Widget aus).  Dazu fragen wir
+    // einmalig nach Größe; schlägt das futuristische Bild fehl,
+    // greifen wir auf PNG zurück.
+    return jpg
+      ..resolve(const ImageConfiguration()).addListener(
+        ImageStreamListener(
+              (_, __) {},
+          onError: (_, __) {
+            setState(() => _levelImg = png);
+          },
+        ),
+      );
+  }
+
+  // ───────────────────────────────────────────────────────────────
+  // INIT  (Manager, Levelname, Bild laden)
+  // ───────────────────────────────────────────────────────────────
   Future<void> _initManager() async {
     try {
       await _manager.init();
-      _levelImg = AssetImage('assets/images/${_manager.level}.jpg');
+      _levelImg = _imageForLevel(_manager.level);
+      _levelName = await LevelNames.nameFor(_manager.level);
       _question = _manager.nextQuestion();
 
       _manager.onWrong = () => setState(() => _blur = _maxBlur);
       _manager.onLevelUp = () {
         final prev = (_manager.level - 1).clamp(1, _manager.level);
-        setState(() {
-          _awaitLevelUp = true;
-          _blur = 0.0;
-          _levelImg = AssetImage('assets/images/$prev.jpg');
+        LevelNames.nameFor(prev).then((name) {
+          setState(() {
+            _prevLevelName = name;
+            _awaitLevelUp = true;
+            _blur = 0.0;
+            _levelImg = _imageForLevel(prev);
+          });
         });
       };
 
@@ -110,18 +140,14 @@ class _QuestionScreenState extends State<QuestionScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    _tts.stop();
-    super.dispose();
-  }
-
+  // ───────────────────────────────────────────────────────────────
+  // Antwort- & Level-Logik
+  // ───────────────────────────────────────────────────────────────
   void _check(int idx) {
     if (_awaitWrong || _awaitLevelUp) return;
 
     final ok = _manager.answer(_question, idx);
     if (ok) {
-      if (_awaitLevelUp) return;
       setState(() {
         _blur = _maxBlur * (1 - _manager.streak / LevelManager.levelGoal);
         _question = _manager.nextQuestion();
@@ -146,10 +172,13 @@ class _QuestionScreenState extends State<QuestionScreen> {
     _speakIfNeeded();
   }
 
-  void _nextLevel() {
+  Future<void> _nextLevel() async {
     setState(() {
       _blur = _maxBlur;
-      _levelImg = AssetImage('assets/images/${_manager.level}.jpg');
+      _levelImg = _imageForLevel(_manager.level);
+    });
+    _levelName = await LevelNames.nameFor(_manager.level);
+    setState(() {
       _question = _manager.nextQuestion();
       _awaitLevelUp = false;
       _wrongIndex = null;
@@ -157,6 +186,9 @@ class _QuestionScreenState extends State<QuestionScreen> {
     _speakIfNeeded();
   }
 
+  // ───────────────────────────────────────────────────────────────
+  // TTS-Popup
+  // ───────────────────────────────────────────────────────────────
   void _showTtsPopup() => showDialog(
     context: context,
     builder: (c) => AlertDialog(
@@ -180,57 +212,32 @@ class _QuestionScreenState extends State<QuestionScreen> {
     ),
   );
 
+  // ───────────────────────────────────────────────────────────────
+  // UI
+  // ───────────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     if (_loadError) {
       return Scaffold(
         appBar: AppBar(title: const Text('Fehler')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error, size: 64, color: Colors.red),
-                const SizedBox(height: 16),
-                Text(
-                  'Daten konnten nicht geladen werden.\n$_errorMsg',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _loadError = false;
-                      _blur = _maxBlur;
-                    });
-                    _initManager();
-                  },
-                  child: const Text('Erneut versuchen'),
-                ),
-              ],
-            ),
-          ),
-        ),
+        body: Center(child: Text('Daten konnten nicht geladen werden.\n$_errorMsg')),
       );
     }
 
     if (_levelImg == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    // Level-Up-Screen
     if (_awaitLevelUp) {
       return Scaffold(
-        appBar: AppBar(title: Text('Level ${_manager.level - 1} geschafft!')),
+        appBar: AppBar(
+          title: Text('Level ${_manager.level - 1}: $_prevLevelName geschafft!'),
+        ),
         body: SafeArea(
           child: Column(
             children: [
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Image(image: _levelImg!, fit: BoxFit.cover),
-              ),
+              AspectRatio(aspectRatio: 16 / 9, child: Image(image: _levelImg!, fit: BoxFit.cover)),
               const SizedBox(height: 24),
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
@@ -243,10 +250,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
               const Spacer(),
               Padding(
                 padding: const EdgeInsets.only(bottom: 30),
-                child: ElevatedButton(
-                  onPressed: _nextLevel,
-                  child: const Text('Weiter'),
-                ),
+                child: ElevatedButton(onPressed: _nextLevel, child: const Text('Weiter')),
               ),
             ],
           ),
@@ -254,17 +258,14 @@ class _QuestionScreenState extends State<QuestionScreen> {
       );
     }
 
+    // Haupt-Screen
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Level ${_manager.level} – Streak ${_manager.streak}/${LevelManager.levelGoal}',
+          'Level ${_manager.level}: $_levelName – '
+              'Streak ${_manager.streak}/${LevelManager.levelGoal}',
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: _showTtsPopup,
-          ),
-        ],
+        actions: [IconButton(icon: const Icon(Icons.more_vert), onPressed: _showTtsPopup)],
       ),
       body: SafeArea(
         child: Column(
@@ -274,11 +275,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
               aspectRatio: 16 / 9,
               child: ImageFiltered(
                 imageFilter: ImageFilter.blur(sigmaX: _blur, sigmaY: _blur),
-                child: Image(
-                  image: _levelImg!,
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                ),
+                child: Image(image: _levelImg!, fit: BoxFit.cover, alignment: Alignment.topCenter),
               ),
             ),
             // Prompt + Lautsprecher
@@ -289,12 +286,9 @@ class _QuestionScreenState extends State<QuestionScreen> {
                 children: [
                   Flexible(
                     child: Text(
-                      _question.prompt, // jetzt englisch
+                      _question.prompt,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                     ),
                   ),
                   IconButton(
@@ -306,7 +300,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
                 ],
               ),
             ),
-            // Antwortbuttons (jetzt deutsch)
+            // Antwort-Buttons
             ..._question.options.asMap().entries.map((e) {
               final i = e.key;
               final txt = e.value;
@@ -330,10 +324,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
             if (_awaitWrong)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
-                child: ElevatedButton(
-                  onPressed: _nextWrong,
-                  child: const Text('Weiter'),
-                ),
+                child: ElevatedButton(onPressed: _nextWrong, child: const Text('Weiter')),
               ),
           ],
         ),
