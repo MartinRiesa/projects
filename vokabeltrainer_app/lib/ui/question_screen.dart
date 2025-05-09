@@ -6,8 +6,8 @@ import 'package:vokabeltrainer_app/core/level_manager.dart';
 import 'package:vokabeltrainer_app/core/question_generator.dart';
 
 class QuestionScreen extends StatefulWidget {
-  final String source;
-  final String target;
+  final String source; // Muttersprache
+  final String target; // Zielsprache
 
   const QuestionScreen({
     Key? key,
@@ -20,8 +20,12 @@ class QuestionScreen extends StatefulWidget {
 }
 
 class _QuestionScreenState extends State<QuestionScreen> {
+  // ────────────────────────────────────────────────────────────────────────────
+  // EINZIGE ÄNDERUNG: Languages vertauscht
+  // ────────────────────────────────────────────────────────────────────────────
   late final LevelManager _manager =
-  LevelManager(sourceLang: widget.source, targetLang: widget.target);
+  LevelManager(sourceLang: widget.target, targetLang: widget.source);
+
   late Question _question;
 
   bool _awaitWrong = false;
@@ -46,7 +50,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
   }
 
   Future<void> _setupTts() async {
-    final locale = _langToLocale(widget.target);
+    final locale = _langToLocale(widget.target); // prompt bleibt Zielsprache
     await _tts.setLanguage(locale);
     await _tts.setSpeechRate(0.45);
     await _tts.setPitch(1.0);
@@ -98,7 +102,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
       setState(() {});
       _speakIfNeeded();
-    } catch (e, st) {
+    } catch (e) {
       setState(() {
         _loadError = true;
         _errorMsg = e.toString();
@@ -239,8 +243,10 @@ class _QuestionScreenState extends State<QuestionScreen> {
               const Spacer(),
               Padding(
                 padding: const EdgeInsets.only(bottom: 30),
-                child:
-                ElevatedButton(onPressed: _nextLevel, child: const Text('Weiter')),
+                child: ElevatedButton(
+                  onPressed: _nextLevel,
+                  child: const Text('Weiter'),
+                ),
               ),
             ],
           ),
@@ -263,7 +269,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Bild
+            // Hintergrundbild mit Blur
             AspectRatio(
               aspectRatio: 16 / 9,
               child: ImageFiltered(
@@ -275,7 +281,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
                 ),
               ),
             ),
-            // Vokabel + Icon
+            // Prompt + Lautsprecher
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
@@ -283,9 +289,12 @@ class _QuestionScreenState extends State<QuestionScreen> {
                 children: [
                   Flexible(
                     child: Text(
-                      _question.prompt,
+                      _question.prompt, // jetzt englisch
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -297,7 +306,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
                 ],
               ),
             ),
-            // Immer 4 Buttons
+            // Antwortbuttons (jetzt deutsch)
             ..._question.options.asMap().entries.map((e) {
               final i = e.key;
               final txt = e.value;
@@ -321,8 +330,10 @@ class _QuestionScreenState extends State<QuestionScreen> {
             if (_awaitWrong)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 10),
-                child:
-                ElevatedButton(onPressed: _nextWrong, child: const Text('Weiter')),
+                child: ElevatedButton(
+                  onPressed: _nextWrong,
+                  child: const Text('Weiter'),
+                ),
               ),
           ],
         ),
