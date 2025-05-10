@@ -16,6 +16,12 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen> {
   late Future<List<Station>> _stationsFut;
 
+  // Geografische Ausdehnung des PNGs (grob Deutschland)
+  final _pngBounds = LatLngBounds(
+    LatLng(55.1, 5.5),   // Nord-West
+    LatLng(47.0, 15.5),  // Süd-Ost
+  );
+
   @override
   void initState() {
     super.initState();
@@ -28,69 +34,85 @@ class _MapScreenState extends State<MapScreen> {
       appBar: AppBar(title: const Text('Deutschlandkarte')),
       body: FutureBuilder<List<Station>>(
         future: _stationsFut,
-        builder: (ctx, snap) {
-          if (!snap.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final stations = snap.data!;
+        builder: (_, snap) {
+          final stations = snap.data ?? <Station>[];
           final completed = LevelManager.instance.currentLevel - 1;
           final next = LevelManager.instance.currentLevel;
 
-          // Pfad bis zum letzten abgeschlossenen Level
           final path = stations
               .where((s) => s.level <= completed)
               .map((s) => LatLng(s.latitude, s.longitude))
               .toList();
 
-          return FlutterMap(
-            options: MapOptions(
-              center:
-              path.isNotEmpty ? path.last : const LatLng(51.0, 9.0),
-              zoom: 6,
-            ),
+          return Stack(
             children: [
-              TileLayer(
-                urlTemplate:
-                'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-                subdomains: const ['a', 'b', 'c'],
-              ),
-              if (path.length >= 2)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: path,
-                      strokeWidth: 4,
-                    ),
-                  ],
+              FlutterMap(
+                options: MapOptions(
+                  center: const LatLng(51.0, 9.0),
+                  zoom: 6,
+                  maxZoom: 8,
+                  minZoom: 5,
                 ),
-              MarkerLayer(
-                markers: stations
-                    .map((s) {
-                  if (s.level > next) return null;
+                children: [
+                  // Dein PNG als Kartenhintergrund
+                  OverlayImageLayer(
+                    overlayImages: [
+                      OverlayImage(
+                        bounds: _pngBounds,
+                        opacity: 1,
+                        imageProvider:
+                        const AssetImage('assets/images/static_map.png'),
+                      ),
+                    ],
+                  ),
 
-                  double size = 50;
-                  Color color = Colors.green;
-                  if (s.level == completed) size = 70;
-                  if (s.level == next) color = Colors.red;
-
-                  return Marker(
-                    point: LatLng(s.latitude, s.longitude),
-                    width: size,
-                    height: size,
-                    child: GestureDetector(
-                      onTap: () => _showPopup(context, s),
-                      child: Icon(Icons.location_on,
-                          color: color, size: size),
+                  if (path.length >= 2)
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: path,
+                          strokeWidth: 4,
+                          color: Colors.blueAccent,
+                        ),
+                      ],
                     ),
-                  );
-                })
-                    .whereType<Marker>()
-                    .toList(),
+
+                  MarkerLayer(
+                    markers: stations
+                        .map((s) => _buildMarker(s, completed, next))
+                        .whereType<Marker>()
+                        .toList(),
+                  ),
+                ],
               ),
+
+              if (snap.connectionState == ConnectionState.waiting)
+                const Center(child: CircularProgressIndicator()),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Marker? _buildMarker(Station s, int completed, int next) {
+    if (s.level > next) return null;
+
+    double size = 40;
+    Color color = Colors.green;
+    if (s.level == completed) size = 60;
+    if (s.level == next) {
+      size = 50;
+      color = Colors.red;
+    }
+
+    return Marker(
+      point: LatLng(s.latitude, s.longitude),
+      width: size,
+      height: size,
+      child: GestureDetector(
+        onTap: () => _showPopup(context, s),
+        child: Icon(Icons.location_on, color: color, size: size),
       ),
     );
   }
@@ -99,8 +121,9 @@ class _MapScreenState extends State<MapScreen> {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text(s.name),
-        content: Text(s.description),
+        title: Text('Level ${s.level}: ${s.name}'),
+        content: Text(
+            s.description.isEmpty ? 'Keine Beschreibung vorhanden.' : s.description),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),

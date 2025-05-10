@@ -8,10 +8,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
-  # CSV-Parsing
   csv: ^5.1.1
-  # OpenStreetMap-Karte + Marker/Polyline
   flutter_map: ^6.0.0
   latlong2: ^0.9.0
 
@@ -24,6 +21,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/                       # Level-Bilder
-    - assets/Vokabeln alle.csv    # ← Hier wird Deine CSV eingebunden
-    - assets/Stationenbeschreibung-englisch.csv
+    - assets/images/static_map.png               # Fallback-PNG
+    - assets/Stationenbeschreibung-englisch.csv  # Stations-CSV
+    - assets/Vokabeln alle.csv                             # (optional) Station-Bilder
+    - assets/images/
