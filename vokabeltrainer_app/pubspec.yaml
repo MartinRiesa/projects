@@ -1,5 +1,6 @@
 name: vokabeltrainer_app
-description: Ein einfacher Vokabeltrainer
+description: Ein spielerischer Vokabel-Trainer
+publish_to: "none"
 version: 1.0.0+1
 
 environment:
@@ -8,17 +9,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  csv: ^5.1.1          # bleibt – CSV wird weiter genutzt
-  # flutter_tts: ^4.0.0   ← ENTFERNT
+  flutter_tts: ^4.2.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.2
+  flutter_lints: ^3.0.1
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/images/
-    - assets/Stationenbeschreibung-englisch.csv
+    - assets/Vokabeln alle.csv    # ← Hier wird Deine CSV eingebunden
