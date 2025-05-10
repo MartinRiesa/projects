@@ -21,10 +21,7 @@ class QuestionScreen extends StatefulWidget {
 }
 
 class _QuestionScreenState extends State<QuestionScreen> {
-  // ------------------------------------------------------------------
-  //  WICHTIG: Sprachen vertauschen, damit der Prompt in widget.target
-  //  erscheint und die Antwortoptionen in widget.source.
-  // ------------------------------------------------------------------
+  // Sprachen getauscht (Prompt = targetLang, Optionen = sourceLang)
   late final LevelManager _manager =
   LevelManager(sourceLang: widget.target, targetLang: widget.source);
 
@@ -52,8 +49,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
   }
 
   Future<void> _setupTts() async {
-    final locale = _langToLocale(widget.target);
-    await _tts.setLanguage(locale);
+    await _tts.setLanguage(_langToLocale(widget.target));
     await _tts.setSpeechRate(0.45);
     setState(() => _ttsReady = true);
   }
@@ -112,6 +108,9 @@ class _QuestionScreenState extends State<QuestionScreen> {
     super.dispose();
   }
 
+  // ------------------------------------------------------------------
+  //  Korrigiert: Nur vorlesen, wenn KEIN Level-Up ansteht
+  // ------------------------------------------------------------------
   void _check(int idx) {
     if (_awaitWrong || _awaitLevelUp) return;
 
@@ -122,7 +121,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
         _question = _manager.nextQuestion();
         _wrongIndex = null;
       });
-      _speakIfNeeded();
+      if (!_awaitLevelUp) _speakIfNeeded(); // <- Fix
     } else {
       setState(() {
         _wrongIndex = idx;
