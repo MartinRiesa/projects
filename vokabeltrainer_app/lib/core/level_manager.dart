@@ -1,5 +1,4 @@
-// lib/core/level_manager.dart
-import 'dart:math' as math;
+import 'dart:math';
 import 'vocab_loader.dart';
 import 'vocab_pair.dart';
 import 'question_generator.dart';
@@ -10,89 +9,105 @@ class LevelManager {
     required this.targetLang,
   });
 
+  // eingestellte Sprachen
   final String sourceLang;
   final String targetLang;
 
-  static const int levelGoal = 10;
-  int level = 1;
-  int streak = 0;
-
   late List<VocabPair> _all;
-  VocabPair? _lastPair;
+  late List<VocabPair> _pool;
 
-  late void Function() onWrong;
-  late void Function() onLevelUp;
+  // Fortschritt
+  int _currentLevel = 1;
+  int get level => _currentLevel;
 
+  int _streak = 0;
+  int get streak => _streak;
+
+  static const int levelGoal = 10;
+
+  void Function()? onWrong;
+  void Function()? onLevelUp;
+
+  final _rnd = Random();
+
+  // ─────────────────────────────────────────── init ──
   Future<void> init() async {
     _all = await VocabLoader.load(sourceLang, targetLang);
+    _pool = _all.where((v) => v.corrects < 3).toList();
+    _ensurePool();
   }
 
+  // ─────────────────────────────── nächste Frage ──
   Question nextQuestion() {
-    final pool = _all.take(level * 7).toList();
-    final chosen = _pickWeighted(pool);
+    final VocabPair chosen = _weightedPick(_pool);
 
-    // 3 Distraktoren auswählen:
-    final wrongCandidates =
-    pool.where((v) => v != chosen).toList()..sort((a, b) => b.mistakes.compareTo(a.mistakes));
+    final distractors = (_pool.where((v) => v != chosen).toList()
+      ..sort((a, b) => b.mistakes.compareTo(a.mistakes)))
+        .take(3)
+        .toList();
 
-    // Zuerst bis zu 2, die oft falsch waren:
-    final distractors = <VocabPair>[];
-    distractors.addAll(wrongCandidates.take(2));
-
-    // Dann solange zufällig auffüllen, bis wir 3 haben:
-    final remaining = pool.where((v) => v != chosen && !distractors.contains(v)).toList();
-    final rnd = math.Random();
-    while (distractors.length < 3 && remaining.isNotEmpty) {
-      final pick = remaining.removeAt(rnd.nextInt(remaining.length));
-      distractors.add(pick);
-    }
-
-    // Nun haben wir genau 3 Distraktoren:
-    assert(distractors.length == 3);
-
-    // Optionen mischen:
-    final options = [chosen, ...distractors]..shuffle(rnd);
-    final correctIndex = options.indexOf(chosen);
-    _lastPair = chosen;
+    final options = [chosen, ...distractors]..shuffle(_rnd);
+    final correct = options.indexOf(chosen);
 
     return Question(
       prompt: chosen.prompt,
       options: options.map((e) => e.answer).toList(),
-      correctIndex: correctIndex,
-      sourcePair: chosen,
+      correctIndex: correct,
+      pair: chosen,
     );
   }
 
+  // ───────────────────────────── Antwort werten ──
   bool answer(Question q, int idx) {
-    final correct = idx == q.correctIndex;
-    if (correct) {
-      q.sourcePair.corrects++;
-      streak++;
-      if (streak >= levelGoal) {
-        level++;
-        streak = 0;
-        onLevelUp();
-      }
+    final pair = q.pair;
+    final ok = idx == q.correctIndex;
+
+    if (ok) {
+      pair.corrects++;
+      _streak++;
+      if (_streak >= levelGoal) _levelUp();
     } else {
-      q.sourcePair.mistakes++;
-      streak = 0;
-      onWrong();
+      pair.mistakes++;
+      _streak = 0;
+      onWrong?.call();
     }
-    return correct;
+    return ok;
   }
 
-  VocabPair _pickWeighted(List<VocabPair> pool) {
-    final weights = pool.map((v) => (v.mistakes + 1) / (v.corrects + 1)).toList();
-    final sum = weights.reduce((a, b) => a + b);
-    var rnd = math.Random().nextDouble() * sum;
+  // ─────────────────────────── Level-Up & Pool ──
+  void _levelUp() {
+    _currentLevel++;
+    _streak = 0;
+    _ensurePool();
+    onLevelUp?.call();
+  }
 
-    for (var i = 0; i < pool.length; i++) {
-      rnd -= weights[i];
-      if (rnd <= 0 && pool[i] != _lastPair) {
-        return pool[i];
-      }
+  void _ensurePool() {
+    _pool = _all
+        .where((v) =>
+    v.corrects < 3 &&
+        v.mistakes < 10 &&
+        v.corrects < _currentLevel + 2)
+        .toList();
+
+    if (_pool.isEmpty) {
+      for (final v in _all) v.corrects = 0;
+      _pool = _all.toList();
     }
-    // Fallback:
-    return pool.firstWhere((v) => v != _lastPair, orElse: () => pool.first);
+  }
+
+  // ───────────────────────── Gewichtete Auswahl ──
+  VocabPair _weightedPick(List<VocabPair> list) {
+    final weights = list
+        .map((v) => (v.mistakes + 1) / (v.corrects + 1))
+        .toList(growable: false);
+    final sum = weights.fold<double>(0, (a, b) => a + b);
+
+    double r = _rnd.nextDouble() * sum;
+    for (int i = 0; i < list.length; i++) {
+      r -= weights[i];
+      if (r <= 0) return list[i];
+    }
+    return list.last;
   }
 }
