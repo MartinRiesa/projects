@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_tts/flutter_tts.dart';
+import 'package:vokabeltrainer_app/tts/tts_stub.dart';
 import 'package:vokabeltrainer_app/core/level_manager.dart';
 import 'package:vokabeltrainer_app/core/question_generator.dart';
 import 'error_screen.dart';
