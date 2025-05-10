@@ -1,72 +1,79 @@
 import 'package:flutter/material.dart';
-import 'package:vokabeltrainer_app/core/level_info_loader.dart';
+import 'package:vokabeltrainer_app/core/station_description_provider.dart';
 
 class LevelUpScreen extends StatelessWidget {
   final int previousLevel;
   final ImageProvider levelImage;
   final VoidCallback onContinue;
 
-  /// Optionaler Callback, um eine Level-Beschreibung vorzulesen.
-  /// Wenn `null`, wird kein Lautsprecher-Icon angezeigt.
-  final VoidCallback? onSpeakDescription;
-
   const LevelUpScreen({
     Key? key,
     required this.previousLevel,
     required this.levelImage,
     required this.onContinue,
-    this.onSpeakDescription,        // ← jetzt optional
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: FutureBuilder<String>(
-          future: LevelInfoLoader.nameFor(previousLevel),
-          builder: (c, snap) =>
-              Text('Level $previousLevel: ${snap.data ?? ""} geschafft!'),
+      body: Container(
+        // Hintergrundbild für das Level
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: levelImage,
+            fit: BoxFit.cover,
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Image(image: levelImage, fit: BoxFit.cover),
-            ),
-            const SizedBox(height: 16),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Levelname / Überschrift
+              Text(
+                'Level $previousLevel',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 10),
 
-            // Levelname
-            FutureBuilder<String>(
-              future: LevelInfoLoader.nameFor(previousLevel),
-              builder: (c, snap) {
-                final name = snap.data ?? '';
-                return Text(
-                  name,
-                  style:
-                  const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                );
-              },
-            ),
-
-            // Optionaler Lautsprecher-Button
-            if (onSpeakDescription != null)
-              IconButton(
-                iconSize: 32,
-                icon: const Icon(Icons.volume_up),
-                onPressed: onSpeakDescription,
+              // Erklärungstext aus der CSV
+              FutureBuilder<String?>(
+                future: StationDescriptionProvider.getExplanation(previousLevel),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    // Ladeindikator während des Einlesens
+                    return const CircularProgressIndicator();
+                  } else if (snapshot.hasError) {
+                    // Fehlermeldung beim Einlesen
+                    return const Text(
+                      'Fehler beim Laden der Erklärung',
+                      style: TextStyle(fontSize: 16.0, color: Colors.red),
+                      textAlign: TextAlign.center,
+                    );
+                  } else {
+                    final explanation = snapshot.data ?? '';
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      child: Text(
+                        explanation,
+                        style: const TextStyle(fontSize: 18.0, color: Colors.white),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+                },
               ),
 
-            const Spacer(),
-            Padding(
-              padding: const EdgeInsets.only(bottom: 30),
-              child: ElevatedButton(
+              const SizedBox(height: 20),
+              ElevatedButton(
                 onPressed: onContinue,
                 child: const Text('Weiter'),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
