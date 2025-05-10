@@ -1,13 +1,14 @@
+// lib/core/vocab_pair.dart
 class VocabPair {
-  final String prompt;   // Wort in Muttersprache
-  final String answer;   // Übersetzung
-  int corrects;
-  int mistakes;
-
   VocabPair({
     required this.prompt,
     required this.answer,
-    this.corrects = 0,
     this.mistakes = 0,
+    this.corrects = 0,
   });
+
+  final String prompt;
+  final String answer;
+  int mistakes;
+  int corrects;
 }

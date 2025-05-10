@@ -1,13 +1,13 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:vokabeltrainer_app/core/level_manager.dart';
+import 'package:vokabeltrainer_app/core/level_info_loader.dart';
 
 class QuizScreen extends StatelessWidget {
-  final int level;
+  final int level;                 // Levelnummer
   final int streak;
   final double blur;
   final ImageProvider levelImage;
-  final String levelName;        // ← neu
   final String prompt;
   final VoidCallback onSpeak;
   final VoidCallback onShowTts;
@@ -24,7 +24,6 @@ class QuizScreen extends StatelessWidget {
     required this.streak,
     required this.blur,
     required this.levelImage,
-    required this.levelName,     // ← neu
     required this.prompt,
     required this.onSpeak,
     required this.onShowTts,
@@ -40,9 +39,15 @@ class QuizScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Level $level – $levelName – '
-              'Streak $streak/${LevelManager.levelGoal}',
+        title: FutureBuilder<String>(
+          future: LevelInfoLoader.nameFor(level),
+          builder: (c, snap) {
+            final name = snap.data ?? '';
+            return Text(
+              'Level $level – $name – '
+                  'Streak $streak/${LevelManager.levelGoal}',
+            );
+          },
         ),
         actions: [
           IconButton(icon: const Icon(Icons.more_vert), onPressed: onShowTts),
@@ -51,7 +56,7 @@ class QuizScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // Bild + Blur
+            // Bild mit Blur
             AspectRatio(
               aspectRatio: 16 / 9,
               child: ImageFiltered(
@@ -59,15 +64,23 @@ class QuizScreen extends StatelessWidget {
                 child: Image(image: levelImage, fit: BoxFit.cover),
               ),
             ),
+
             // Levelname über dem Bild
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                levelName,
-                style: const TextStyle(
-                    fontSize: 22, fontWeight: FontWeight.bold),
-              ),
+            FutureBuilder<String>(
+              future: LevelInfoLoader.nameFor(level),
+              builder: (c, snap) {
+                final name = snap.data ?? '';
+                return Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    name,
+                    style: const TextStyle(
+                        fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                );
+              },
             ),
+
             // Prompt + Lautsprecher
             Padding(
               padding: const EdgeInsets.all(20),
@@ -91,6 +104,7 @@ class QuizScreen extends StatelessWidget {
                 ],
               ),
             ),
+
             // Antwortbuttons
             ...options.asMap().entries.map((e) {
               final i = e.key;

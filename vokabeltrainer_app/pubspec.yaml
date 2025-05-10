@@ -1,44 +1,25 @@
 name: vokabeltrainer_app
-description: Ein einfacher, sprachübergreifender Vokabeltrainer
+description: Ein spielerischer Vokabel-Trainer
+publish_to: "none"
 version: 1.0.0+1
 
 environment:
   sdk: ">=3.3.0 <4.0.0"
 
-###############################################################################
-# Abhängigkeiten                                                             #
-###############################################################################
 dependencies:
   flutter:
     sdk: flutter
-
-  # CSV-Parsing (Stations- & Vokabeldateien)
-  csv: ^5.1.1
-
-  # Karten-Framework (OpenStreetMap, Marker, Polylinien)
-  flutter_map: ^6.2.1
-  latlong2: ^0.9.1
-
-  # Optionale Standard-Icons
-  cupertino_icons: ^1.0.6
+  flutter_tts: ^4.2.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^3.0.2
+  flutter_lints: ^3.0.1
 
-###############################################################################
-# Flutter-Spezifisches                                                       #
-###############################################################################
 flutter:
   uses-material-design: true
 
   assets:
-    # Stations-CSV (Levelnamen, Geokoordinaten, Erklärungstexte)
-    - assets/Stationenbeschreibung-englisch.csv
-
-    # Vokabelliste aller Levels
-    - assets/Vokabeln alle.csv
-
-    # Level- und Stationsbilder
     - assets/images/
+    - assets/Vokabeln alle.csv    # ← Hier wird Deine CSV eingebunden
+    - assets/Stationenbeschreibung-englisch.csv

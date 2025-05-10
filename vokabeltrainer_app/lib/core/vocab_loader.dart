@@ -1,47 +1,65 @@
+// lib/core/vocab_loader.dart
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:csv/csv.dart';
 import 'vocab_pair.dart';
 
+/// Lädt die CSV assets/Vokabeln alle.csv und liefert
+/// für die ISO-Codes src→tgt eine Liste von VocabPair.
 class VocabLoader {
-  /// Lädt alle Vokabeln für [sourceLang] → [targetLang].
-  /// Optional: nur ein bestimmtes [levelFilter].
-  static Future<List<VocabPair>> load(
-    String sourceLang,
-    String targetLang, {
-    int? levelFilter,
-  }) async {
-    final raw =
-        await rootBundle.loadString('assets/Vokabeln alle.csv');
+  /// Mappt ISO-Sprachcode → Spaltenname in der CSV.
+  static const Map<String, String> _codeToHeader = {
+    'de': 'Deutsch',
+    'en': 'Englisch',
+    'fa': 'Daari',
+    'uk': 'Ukrainisch',
+    'ar': 'arabisch',
+  };
 
-    final rows = const CsvToListConverter(
-      fieldDelimiter: ';',
-      eol: '\n',
-      shouldParseNumbers: false,
-    ).convert(raw);
+  static Future<List<VocabPair>> load(String src, String tgt) async {
+    // 1) Datei einlesen
+    final raw = await rootBundle.loadString('assets/Vokabeln alle.csv');
+    final lines = raw
+        .split(RegExp(r'\r?\n'))
+        .where((l) => l.trim().isNotEmpty)
+        .toList();
 
-    if (rows.isEmpty) throw 'CSV leer';
-
-    final header = rows.first.cast<String>();
-    final idxLvl = header.indexOf('Level');
-    final idxSrc = header.indexOf(sourceLang);
-    final idxTgt = header.indexOf(targetLang);
-
-    if (idxLvl < 0 || idxSrc < 0 || idxTgt < 0) {
-      throw 'Spalten nicht gefunden ($sourceLang/$targetLang)';
+    if (lines.isEmpty) {
+      throw Exception('CSV ist leer');
     }
 
-    final list = <VocabPair>[];
-    for (final r in rows.skip(1)) {
-      if (r.length <= idxTgt) continue;
-      final lvl = int.tryParse(r[idxLvl].toString()) ?? 0;
-      if (levelFilter != null && lvl != levelFilter) continue;
+    // 2) Header parsen und BOM entfernen
+    final headerLine = lines.first.replaceFirst('\ufeff', '');
+    final headers = headerLine.split(';').map((h) => h.trim()).toList();
 
-      list.add(VocabPair(
-        prompt: r[idxSrc].toString().trim(),
-        answer: r[idxTgt].toString().trim(),
-      ));
+    // 3) Index für src/tgt ermitteln
+    final srcHeader = _codeToHeader[src];
+    final tgtHeader = _codeToHeader[tgt];
+    final srcIdx = srcHeader != null ? headers.indexOf(srcHeader) : -1;
+    final tgtIdx = tgtHeader != null ? headers.indexOf(tgtHeader) : -1;
+
+    if (srcIdx < 0 || tgtIdx < 0) {
+      throw Exception(
+        'Sprach-Code nicht in CSV-Header gefunden: '
+            '$src → $srcIdx, $tgt → $tgtIdx',
+      );
     }
-    if (list.isEmpty) throw 'Keine Daten für Level $levelFilter';
-    return list;
+
+    // 4) Zeilen 2…n als Vokabeln parsen
+    final List<VocabPair> pairs = [];
+    for (var i = 1; i < lines.length; i++) {
+      final cols = lines[i].split(';');
+      if (cols.length <= srcIdx || cols.length <= tgtIdx) continue;
+
+      final prompt = cols[srcIdx].trim();
+      final answer = cols[tgtIdx].trim();
+      if (prompt.isEmpty || answer.isEmpty) continue;
+
+      pairs.add(VocabPair(prompt: prompt, answer: answer));
+    }
+
+    if (pairs.isEmpty) {
+      throw Exception('Keine Vokabeln für $src→$tgt in CSV gefunden');
+    }
+
+    return pairs;
   }
 }

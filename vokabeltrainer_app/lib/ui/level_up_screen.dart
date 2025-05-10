@@ -1,74 +1,79 @@
 import 'package:flutter/material.dart';
-import 'package:vokabeltrainer_app/ui/map_screen.dart';
-import 'package:vokabeltrainer_app/core/level_info_loader.dart';
 import 'package:vokabeltrainer_app/core/station_description_provider.dart';
 
 class LevelUpScreen extends StatelessWidget {
   final int previousLevel;
   final ImageProvider levelImage;
-  final int completedCount;      // Anzahl erledigter Level
   final VoidCallback onContinue;
 
   const LevelUpScreen({
     Key? key,
     required this.previousLevel,
     required this.levelImage,
-    required this.completedCount,
     required this.onContinue,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          children: [
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: Image(image: levelImage, fit: BoxFit.cover),
-            ),
-            const SizedBox(height: 12),
-            FutureBuilder<String>(
-              future: LevelInfoLoader.nameFor(previousLevel),
-              builder: (_, s) => Text(
-                s.data ?? '',
-                style:
-                const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 8),
-            FutureBuilder<String>(
-              future: StationDescriptionProvider.getExplanation(previousLevel),
-              builder: (_, s) => Padding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Text(
-                  s.data ?? '',
-                  textAlign: TextAlign.center,
+      body: Container(
+        // Hintergrundbild für das Level
+        decoration: BoxDecoration(
+          image: DecorationImage(
+            image: levelImage,
+            fit: BoxFit.cover,
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Levelname / Überschrift
+              Text(
+                'Level $previousLevel',
+                style: const TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
-            ),
-            const Spacer(),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => MapScreen(completedCount: completedCount),
-                    ),
-                  ),
-                  child: const Text('Zur Karte'),
-                ),
-                ElevatedButton(
-                  onPressed: onContinue,
-                  child: const Text('Weiter'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 30),
-          ],
+              const SizedBox(height: 10),
+
+              // Erklärungstext aus der CSV
+              FutureBuilder<String?>(
+                future: StationDescriptionProvider.getExplanation(previousLevel),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    // Ladeindikator während des Einlesens
+                    return const CircularProgressIndicator();
+                  } else if (snapshot.hasError) {
+                    // Fehlermeldung beim Einlesen
+                    return const Text(
+                      'Fehler beim Laden der Erklärung',
+                      style: TextStyle(fontSize: 16.0, color: Colors.red),
+                      textAlign: TextAlign.center,
+                    );
+                  } else {
+                    final explanation = snapshot.data ?? '';
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      child: Text(
+                        explanation,
+                        style: const TextStyle(fontSize: 18.0, color: Colors.white),
+                        textAlign: TextAlign.center,
+                      ),
+                    );
+                  }
+                },
+              ),
+
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: onContinue,
+                child: const Text('Weiter'),
+              ),
+            ],
+          ),
         ),
       ),
     );
