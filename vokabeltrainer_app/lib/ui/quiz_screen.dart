@@ -7,6 +7,7 @@ class QuizScreen extends StatelessWidget {
   final int streak;
   final double blur;
   final ImageProvider levelImage;
+  final String levelName;                 // ← neu
   final String prompt;
   final VoidCallback onSpeak;
   final VoidCallback onShowTts;
@@ -23,6 +24,7 @@ class QuizScreen extends StatelessWidget {
     required this.streak,
     required this.blur,
     required this.levelImage,
+    required this.levelName,               // ← neu
     required this.prompt,
     required this.onSpeak,
     required this.onShowTts,
@@ -39,31 +41,34 @@ class QuizScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Level $level – Streak $streak/${LevelManager.levelGoal}',
+          'Level $level – $levelName – '
+              'Streak $streak/${LevelManager.levelGoal}',
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: onShowTts,
-          ),
+          IconButton(icon: const Icon(Icons.more_vert), onPressed: onShowTts),
         ],
       ),
       body: SafeArea(
         child: Column(
           children: [
-            // Bild mit Blur-Effekt
+            // Bild mit Blur
             AspectRatio(
               aspectRatio: 16 / 9,
               child: ImageFiltered(
                 imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-                child: Image(
-                  image: levelImage,
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                ),
+                child: Image(image: levelImage, fit: BoxFit.cover),
               ),
             ),
-            // Frage + Lautsprecher-Icon
+            // Level-Name über dem Bild
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                levelName,
+                style:
+                const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+            ),
+            // Prompt + Lautsprecher
             Padding(
               padding: const EdgeInsets.all(20),
               child: Row(
@@ -73,7 +78,8 @@ class QuizScreen extends StatelessWidget {
                     child: Text(
                       prompt,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                          fontSize: 28, fontWeight: FontWeight.bold),
                     ),
                   ),
                   IconButton(
@@ -95,7 +101,8 @@ class QuizScreen extends StatelessWidget {
                 if (i == wrongIndex) bg = Colors.red;
               }
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                padding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: bg,
