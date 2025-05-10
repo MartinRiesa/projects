@@ -1,9 +1,10 @@
-// lib/ui/question_screen.dart
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:vokabeltrainer_app/core/level_manager.dart';
 import 'package:vokabeltrainer_app/core/question_generator.dart';
+import 'error_screen.dart';
+import 'level_up_screen.dart';
+import 'quiz_screen.dart';
 
 class QuestionScreen extends StatefulWidget {
   final String source; // Muttersprache
@@ -20,9 +21,10 @@ class QuestionScreen extends StatefulWidget {
 }
 
 class _QuestionScreenState extends State<QuestionScreen> {
-  // ────────────────────────────────────────────────────────────────────────────
-  // EINZIGE ÄNDERUNG: Languages vertauscht
-  // ────────────────────────────────────────────────────────────────────────────
+  // ------------------------------------------------------------------
+  //  WICHTIG: Sprachen vertauschen, damit der Prompt in widget.target
+  //  erscheint und die Antwortoptionen in widget.source.
+  // ------------------------------------------------------------------
   late final LevelManager _manager =
   LevelManager(sourceLang: widget.target, targetLang: widget.source);
 
@@ -50,29 +52,20 @@ class _QuestionScreenState extends State<QuestionScreen> {
   }
 
   Future<void> _setupTts() async {
-    final locale = _langToLocale(widget.target); // prompt bleibt Zielsprache
+    final locale = _langToLocale(widget.target);
     await _tts.setLanguage(locale);
     await _tts.setSpeechRate(0.45);
-    await _tts.setPitch(1.0);
-    _ttsReady = true;
+    setState(() => _ttsReady = true);
   }
 
-  String _langToLocale(String code) {
-    switch (code) {
-      case 'de':
-        return 'de-DE';
-      case 'en':
-        return 'en-US';
-      case 'uk':
-        return 'uk-UA';
-      case 'ar':
-        return 'ar-SA';
-      case 'fa':
-        return 'fa-AF';
-      default:
-        return 'en-US';
-    }
-  }
+  String _langToLocale(String code) => switch (code) {
+    'de' => 'de-DE',
+    'en' => 'en-US',
+    'uk' => 'uk-UA',
+    'ar' => 'ar-SA',
+    'fa' => 'fa-AF',
+    _ => 'en-US',
+  };
 
   Future<void> _speak(String text) async {
     if (!_ttsReady) return;
@@ -100,7 +93,10 @@ class _QuestionScreenState extends State<QuestionScreen> {
         });
       };
 
-      setState(() {});
+      setState(() {
+        _awaitWrong = false;
+        _blur = _maxBlur;
+      });
       _speakIfNeeded();
     } catch (e) {
       setState(() {
@@ -121,7 +117,6 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
     final ok = _manager.answer(_question, idx);
     if (ok) {
-      if (_awaitLevelUp) return;
       setState(() {
         _blur = _maxBlur * (1 - _manager.streak / LevelManager.levelGoal);
         _question = _manager.nextQuestion();
@@ -138,7 +133,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
   void _nextWrong() {
     setState(() {
-      _blur = _maxBlur * (1 - _manager.streak / LevelManager.levelGoal);
+      _blur = _maxBlur;
       _question = _manager.nextQuestion();
       _awaitWrong = false;
       _wrongIndex = null;
@@ -180,164 +175,46 @@ class _QuestionScreenState extends State<QuestionScreen> {
     ),
   );
 
+  void _retry() {
+    setState(() {
+      _loadError = false;
+      _blur = _maxBlur;
+    });
+    _initManager();
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loadError) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Fehler')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.error, size: 64, color: Colors.red),
-                const SizedBox(height: 16),
-                Text(
-                  'Daten konnten nicht geladen werden.\n$_errorMsg',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      _loadError = false;
-                      _blur = _maxBlur;
-                    });
-                    _initManager();
-                  },
-                  child: const Text('Erneut versuchen'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
+      return ErrorScreen(errorMessage: _errorMsg, onRetry: _retry);
     }
-
     if (_levelImg == null) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
     }
-
     if (_awaitLevelUp) {
-      return Scaffold(
-        appBar: AppBar(title: Text('Level ${_manager.level - 1} geschafft!')),
-        body: SafeArea(
-          child: Column(
-            children: [
-              AspectRatio(
-                aspectRatio: 16 / 9,
-                child: Image(image: _levelImg!, fit: BoxFit.cover),
-              ),
-              const SizedBox(height: 24),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  'Super gemacht! Tippe auf „Weiter“, um das nächste Level zu starten.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const Spacer(),
-              Padding(
-                padding: const EdgeInsets.only(bottom: 30),
-                child: ElevatedButton(
-                  onPressed: _nextLevel,
-                  child: const Text('Weiter'),
-                ),
-              ),
-            ],
-          ),
-        ),
+      final prevLevel = (_manager.level - 1).clamp(1, _manager.level);
+      return LevelUpScreen(
+        previousLevel: prevLevel,
+        levelImage: _levelImg!,
+        onContinue: _nextLevel,
       );
     }
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Level ${_manager.level} – Streak ${_manager.streak}/${LevelManager.levelGoal}',
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: _showTtsPopup,
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Hintergrundbild mit Blur
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: _blur, sigmaY: _blur),
-                child: Image(
-                  image: _levelImg!,
-                  fit: BoxFit.cover,
-                  alignment: Alignment.topCenter,
-                ),
-              ),
-            ),
-            // Prompt + Lautsprecher
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      _question.prompt, // jetzt englisch
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    iconSize: 32,
-                    icon: const Icon(Icons.volume_up),
-                    onPressed: () => _speak(_question.prompt),
-                    onLongPress: _showTtsPopup,
-                  ),
-                ],
-              ),
-            ),
-            // Antwortbuttons (jetzt deutsch)
-            ..._question.options.asMap().entries.map((e) {
-              final i = e.key;
-              final txt = e.value;
-              Color? bg;
-              if (_awaitWrong) {
-                if (i == _question.correctIndex) bg = Colors.green;
-                if (i == _wrongIndex) bg = Colors.red;
-              }
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: bg,
-                    minimumSize: const Size.fromHeight(56),
-                  ),
-                  onPressed: () => _check(i),
-                  child: Text(txt, style: const TextStyle(fontSize: 18)),
-                ),
-              );
-            }),
-            if (_awaitWrong)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: ElevatedButton(
-                  onPressed: _nextWrong,
-                  child: const Text('Weiter'),
-                ),
-              ),
-          ],
-        ),
-      ),
+    return QuizScreen(
+      level: _manager.level,
+      streak: _manager.streak,
+      blur: _blur,
+      levelImage: _levelImg!,
+      prompt: _question.prompt,
+      onSpeak: () => _speak(_question.prompt),
+      onShowTts: _showTtsPopup,
+      options: _question.options,
+      correctIndex: _question.correctIndex,
+      wrongIndex: _wrongIndex,
+      awaitWrong: _awaitWrong,
+      onAnswer: _check,
+      onNextWrong: _nextWrong,
     );
   }
 }
