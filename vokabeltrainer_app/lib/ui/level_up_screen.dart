@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vokabeltrainer_app/core/station_description_provider.dart';
+import 'package:vokabeltrainer_app/ui/map_screen.dart';
 
 class LevelUpScreen extends StatelessWidget {
   final int previousLevel;
@@ -56,15 +57,29 @@ class LevelUpScreen extends StatelessWidget {
                   } else {
                     final explanation = snapshot.data ?? '';
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16.0, vertical: 8.0),
                       child: Text(
                         explanation,
-                        style: const TextStyle(fontSize: 18.0, color: Colors.white),
+                        style:
+                        const TextStyle(fontSize: 18.0, color: Colors.white),
                         textAlign: TextAlign.center,
                       ),
                     );
                   }
                 },
+              ),
+
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const MapScreen(),
+                    ),
+                  );
+                },
+                child: const Text('Karte'),
               ),
 
               const SizedBox(height: 20),
