@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:vokabeltrainer_app/tts/tts_stub.dart';
 import 'package:vokabeltrainer_app/core/level_manager.dart';
 import 'package:vokabeltrainer_app/core/question_generator.dart';
-import 'package:vokabeltrainer_app/tts/tts_service.dart';
-
 import 'error_screen.dart';
 import 'level_up_screen.dart';
 import 'quiz_screen.dart';
@@ -22,6 +21,7 @@ class QuestionScreen extends StatefulWidget {
 }
 
 class _QuestionScreenState extends State<QuestionScreen> {
+  // Sprachen getauscht (Prompt = targetLang, Optionen = sourceLang)
   late final LevelManager _manager =
   LevelManager(sourceLang: widget.target, targetLang: widget.source);
 
@@ -38,16 +38,21 @@ class _QuestionScreenState extends State<QuestionScreen> {
   bool _loadError = false;
   String _errorMsg = '';
 
+  final FlutterTts _tts = FlutterTts();
+  bool _ttsReady = false;
   bool _autoTts = true;
 
   @override
   void initState() {
     super.initState();
-    _initTts().then((_) => _initManager());
+    _setupTts().then((_) => _initManager());
   }
 
-  Future<void> _initTts() =>
-      TtsService.instance.init(_langToLocale(widget.target));
+  Future<void> _setupTts() async {
+    await _tts.setLanguage(_langToLocale(widget.target));
+    await _tts.setSpeechRate(0.45);
+    setState(() => _ttsReady = true);
+  }
 
   String _langToLocale(String code) => switch (code) {
     'de' => 'de-DE',
@@ -58,8 +63,12 @@ class _QuestionScreenState extends State<QuestionScreen> {
     _ => 'en-US',
   };
 
-  Future<void> _speak(String text) =>
-      TtsService.instance.speak(text, locale: _langToLocale(widget.target));
+  Future<void> _speak(String text) async {
+    if (!_ttsReady) return;
+    await _tts.setLanguage(_langToLocale(widget.target));
+    await _tts.stop();
+    await _tts.speak(text);
+  }
 
   Future<void> _speakIfNeeded() =>
       _autoTts ? _speak(_question.prompt) : Future.value();
@@ -95,10 +104,13 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
   @override
   void dispose() {
-    TtsService.instance.stop();
+    _tts.stop();
     super.dispose();
   }
 
+  // ------------------------------------------------------------------
+  //  Korrigiert: Nur vorlesen, wenn KEIN Level-Up ansteht
+  // ------------------------------------------------------------------
   void _check(int idx) {
     if (_awaitWrong || _awaitLevelUp) return;
 
@@ -109,7 +121,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
         _question = _manager.nextQuestion();
         _wrongIndex = null;
       });
-      if (!_awaitLevelUp) _speakIfNeeded();
+      if (!_awaitLevelUp) _speakIfNeeded(); // <- Fix
     } else {
       setState(() {
         _wrongIndex = idx;
