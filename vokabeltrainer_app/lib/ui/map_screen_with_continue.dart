@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:vokabeltrainer_app/ui/widgets/map_with_markers.dart';
 
-/// Zeigt die Deutschlandkarte an und bietet unten einen „Weiter“-Button,
-/// der dieselbe Aktion wie der „Weiter“-Button im Level-Up-Screen auslöst.
 class MapScreenWithContinue extends StatelessWidget {
   /// Callback, der das nächste Level öffnet.
   final VoidCallback onContinue;
@@ -11,6 +10,13 @@ class MapScreenWithContinue extends StatelessWidget {
     required this.onContinue,
   }) : super(key: key);
 
+  // Feste Markerkoordinaten aus der Aufgabenstellung
+  static const _points = [
+    LatLon(50.1096, 8.6724),
+    LatLon(48.7650, 11.4257),
+    LatLon(54.3126, 13.0929),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -19,16 +25,11 @@ class MapScreenWithContinue extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // Zoombare Karte
+          // Zoombare Karte mit Markern
           Expanded(
             child: InteractiveViewer(
               maxScale: 5.0,
-              child: Center(
-                child: Image.asset(
-                  'assets/images/germany_map.png',
-                  fit: BoxFit.contain,
-                ),
-              ),
+              child: MapWithMarkers(markers: _points),
             ),
           ),
 
@@ -41,10 +42,8 @@ class MapScreenWithContinue extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Erst nächste Station öffnen …
-                    onContinue();
-                    // … und anschließend diese Karte schließen
-                    Navigator.of(context).pop();
+                    onContinue();          // nächstes Level
+                    Navigator.of(context).pop(); // Karte schließen
                   },
                   child: const Text('Weiter'),
                 ),
