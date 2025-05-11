@@ -1,56 +1,39 @@
-// lib/core/station_description_provider.dart
-//
-// Liest "assets/Stationenbeschreibung-englisch.csv" genau einmal ein und
-// stellt den Erklärungstext (Spalte „Erklärung“) nach Levelnummer bereit.
-
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:csv/csv.dart';
 
 class StationDescriptionProvider {
-  static Map<int, String>? _cache;
+  static Map<int, String>? _explanations;
 
-  /// Interne Ladefunktion → füllt [_cache] beim ersten Aufruf.
-  static Future<void> _load() async {
-    if (_cache != null) return;           // bereits vorhanden
-
-    final raw =
-    await rootBundle.loadString('assets/Stationenbeschreibung-englisch.csv');
-
-    // CSV parsen (Semikolon als Trennzeichen)
-    final rows = const CsvToListConverter(
-      fieldDelimiter: ';',
-      eol: '\n',
-      shouldParseNumbers: false,
-    ).convert(raw);
-
-    if (rows.isEmpty) {
-      _cache = {};
-      return;
-    }
-
-    final header = rows.first.cast<String>();
-    final idxNr = header.indexOf('Nr');
-    final idxErkl = header.indexOf('Erklärung');
-
+  /// Lädt die CSV-Datei und erstellt eine Map von Levelnummer auf Erklärungstext.
+  static Future<void> _loadData() async {
+    if (_explanations != null) return;  // Bereits geladen
+    final csv = await rootBundle.loadString('assets/Stationenbeschreibung-englisch.csv');
+    final lines = csv.split('\n');
     final map = <int, String>{};
-    for (final r in rows.skip(1)) {
-      if (r.length <= idxErkl) continue;
-      final nr = int.tryParse(r[idxNr].toString().trim());
-      if (nr == null) continue;
-
-      var text = r[idxErkl].toString();
-      // Entfernt evtl. Anführungszeichen um den Text
-      if (text.startsWith('"') && text.endsWith('"')) {
-        text = text.substring(1, text.length - 1);
+    if (lines.isNotEmpty) {
+      // Spaltenüberschriften auslesen und Index der Spalte 'Erklärung' bestimmen
+      final header = lines[0].split(';');
+      final index = header.indexOf('Erklärung');
+      for (var i = 1; i < lines.length; i++) {
+        final parts = lines[i].split(';');
+        if (parts.length > index) {
+          final nr = int.tryParse(parts[0].trim());
+          if (nr != null) {
+            var text = parts[index];
+            // Anführungszeichen am Anfang und Ende entfernen, falls vorhanden
+            if (text.startsWith('"') && text.endsWith('"')) {
+              text = text.substring(1, text.length - 1);
+            }
+            map[nr] = text;
+          }
+        }
       }
-      map[nr] = text.trim();
     }
-    _cache = map;
+    _explanations = map;
   }
 
-  /// Öffentliche Methode: Erklärung für [level] oder leerer String.
-  static Future<String> getExplanation(int level) async {
-    await _load();
-    return _cache?[level] ?? '';
+  /// Liefert den Erklärungstext für das gegebene Level (oder `null`, wenn nicht gefunden).
+  static Future<String?> getExplanation(int level) async {
+    await _loadData();
+    return _explanations?[level];
   }
 }
