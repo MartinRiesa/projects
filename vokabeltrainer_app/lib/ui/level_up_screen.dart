@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vokabeltrainer_app/core/station_description_provider.dart';
-import 'package:vokabeltrainer_app/ui/map_screen.dart';
+import 'package:vokabeltrainer_app/ui/map_screen_with_continue.dart';
 
 class LevelUpScreen extends StatelessWidget {
   final int previousLevel;
@@ -29,7 +29,7 @@ class LevelUpScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Levelname / Überschrift
+              // Überschrift: aktuelles Level
               Text(
                 'Level $previousLevel',
                 style: const TextStyle(
@@ -42,13 +42,12 @@ class LevelUpScreen extends StatelessWidget {
 
               // Erklärungstext aus der CSV
               FutureBuilder<String?>(
-                future: StationDescriptionProvider.getExplanation(previousLevel),
+                future:
+                StationDescriptionProvider.getExplanation(previousLevel),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    // Ladeindikator während des Einlesens
                     return const CircularProgressIndicator();
                   } else if (snapshot.hasError) {
-                    // Fehlermeldung beim Einlesen
                     return const Text(
                       'Fehler beim Laden der Erklärung',
                       style: TextStyle(fontSize: 16.0, color: Colors.red),
@@ -71,11 +70,14 @@ class LevelUpScreen extends StatelessWidget {
               ),
 
               const SizedBox(height: 20),
+
+              // Button „Karte“ – öffnet MapScreenWithContinue
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => const MapScreen(),
+                      builder: (_) =>
+                          MapScreenWithContinue(onContinue: onContinue),
                     ),
                   );
                 },
@@ -83,6 +85,8 @@ class LevelUpScreen extends StatelessWidget {
               ),
 
               const SizedBox(height: 20),
+
+              // Button „Weiter“ – führt ins nächste Level
               ElevatedButton(
                 onPressed: onContinue,
                 child: const Text('Weiter'),
