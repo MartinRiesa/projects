@@ -11,6 +11,7 @@ dependencies:
   csv: ^5.1.1
   flutter_map: ^6.0.0
   latlong2: ^0.9.0
+  flutter_tts: ^4.2.2        # <-- Text-to-Speech
 
 dev_dependencies:
   flutter_test:
@@ -21,7 +22,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/images/static_map.png               # Fallback-PNG
-    - assets/Stationenbeschreibung-englisch.csv  # Stations-CSV
+    - assets/images/static_map.png
+    - assets/Stationenbeschreibung-englisch.csv
     - assets/Vokabeln alle.csv                             # (optional) Station-Bilder
     - assets/images/
