@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vokabeltrainer_app/core/level_manager.dart';
 import 'package:vokabeltrainer_app/core/question_generator.dart';
-import 'package:vokabeltrainer_app/core/station_loader.dart';
-import 'package:vokabeltrainer_app/core/station.dart';
 import 'package:vokabeltrainer_app/tts/tts_service.dart';
 
 import 'error_screen.dart';
@@ -42,24 +40,14 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
   bool _autoTts = true;
 
-  List<Station> _stations = [];        // ❸ Stationsliste gecached
-  Station? _latestStation;             // ❹ Station des gerade abgeschlossenen Levels
-
   @override
   void initState() {
     super.initState();
-    _initAll();
+    _initTts().then((_) => _initManager());
   }
 
-  Future<void> _initAll() async {
-    await TtsService.instance.init(_langToLocale(widget.target));
-    await _loadStations();
-    await _initManager();
-  }
-
-  Future<void> _loadStations() async {
-    _stations = await StationLoader.load();
-  }
+  Future<void> _initTts() =>
+      TtsService.instance.init(_langToLocale(widget.target));
 
   String _langToLocale(String code) => switch (code) {
     'de' => 'de-DE',
@@ -85,17 +73,6 @@ class _QuestionScreenState extends State<QuestionScreen> {
       _manager.onWrong = () => setState(() => _blur = _maxBlur);
       _manager.onLevelUp = () {
         final prev = (_manager.level - 1).clamp(1, _manager.level);
-        // ❺ passende Station für Dialog ermitteln
-        _latestStation = _stations.firstWhere(
-              (s) => s.level == prev,
-          orElse: () => Station(
-            level: prev,
-            name: 'Unbekannt',
-            description: '',
-            latitude: 0,
-            longitude: 0,
-          ),
-        );
         setState(() {
           _awaitLevelUp = true;
           _blur = 0.0;
@@ -208,7 +185,6 @@ class _QuestionScreenState extends State<QuestionScreen> {
       return LevelUpScreen(
         previousLevel: prevLevel,
         levelImage: _levelImg!,
-        station: _latestStation,          // ❻ Station wird übergeben
         onContinue: _nextLevel,
       );
     }
