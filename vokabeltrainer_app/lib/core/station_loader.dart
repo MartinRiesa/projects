@@ -1,11 +1,10 @@
 // lib/core/station_loader.dart
 //
-// Liest Stationenbeschreibung-englisch.csv (Semikolon-getrennt) aus assets
-// und cached das Ergebnis für spätere Aufrufe.
+// Lädt die Stationsdaten (Levelname, Beschreibung, Koordinaten, Bild)
+// genau einmal aus „assets/Stationenbeschreibung-englisch.csv“.
 
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:csv/csv.dart';
-
 import 'station.dart';
 
 class StationLoader {
@@ -14,51 +13,47 @@ class StationLoader {
   static Future<List<Station>> load() async {
     if (_cache != null) return _cache!;
 
-    try {
-      final raw = await rootBundle
-          .loadString('assets/Stationenbeschreibung-englisch.csv');
+    // CSV als String laden
+    final raw = await rootBundle
+        .loadString('assets/Stationenbeschreibung-englisch.csv');
 
-      final rows = const CsvToListConverter(
-        fieldDelimiter: ';',
-        eol: '\n',
-        shouldParseNumbers: false,
-      ).convert(raw);
+    // Semikolon-getrennt, keine Zahl-Parsing
+    final rows = const CsvToListConverter(
+      fieldDelimiter: ';',
+      eol: '\n',
+      shouldParseNumbers: false,
+    ).convert(raw);
 
-      if (rows.isEmpty) return _cache = [];
+    if (rows.isEmpty) return _cache = [];
 
-      // Header analysieren (Groß/Kleinschreibung egal)
-      final header = rows.first.map((e) => e.toString().toLowerCase()).toList();
-      int idxNr = header.indexOf('nr');
-      int idxName = header.indexOf('station');
-      int idxLat = header.indexOf('latitude');
-      int idxLon = header.indexOf('longitude');
-      if (idxLon == -1) idxLon = header.indexOf('longtitude'); // Tippfehler-Spalte
-      int idxDesc = header.indexOf('erklärung');
-      int idxImg = header.indexOf('bild');
+    // Spaltenindizes
+    final header = rows.first.cast<String>();
+    final idxNr = header.indexOf('Nr');
+    final idxStation = header.indexOf('Station');
+    final idxLat = header.indexOf('Latitude');
+    final idxLon = header.indexOf('Longitude');
+    final idxBild = header.indexOf('Bild');
+    final idxErkl = header.indexOf('Erklärung');
 
-      final list = <Station>[];
+    final list = <Station>[];
 
-      for (final row in rows.skip(1)) {
-        if (row.length <= idxLon || idxLat == -1 || idxLon == -1) continue;
+    for (final row in rows.skip(1)) {
+      if (row.length <= idxErkl) continue; // defekte Zeile überspringen
+      final nr = int.tryParse(row[idxNr].toString()) ?? 0;
 
-        list.add(
-          Station(
-            level: int.tryParse(row[idxNr].toString()) ?? 0,
-            name: row[idxName].toString().trim(),
-            latitude: double.parse(
-                row[idxLat].toString().replaceAll(',', '.')),
-            longitude: double.parse(
-                row[idxLon].toString().replaceAll(',', '.')),
-            description: idxDesc >= 0 ? row[idxDesc].toString().trim() : '',
-            imageAsset: idxImg >= 0 ? row[idxImg].toString().trim() : '',
-          ),
-        );
-      }
-
-      _cache = list;
-      return list;
-    } catch (_) {
-      return _cache = [];
+      list.add(Station(
+        level: nr,
+        name: row[idxStation].toString().trim(),
+        latitude:
+        double.parse(row[idxLat].toString().replaceAll(',', '.')),
+        longitude:
+        double.parse(row[idxLon].toString().replaceAll(',', '.')),
+        imageAsset: row[idxBild].toString().trim(),
+        description: row[idxErkl].toString().trim(),
+      ));
     }
+
+    _cache = list;
+    return list;
   }
 }

@@ -1,25 +1,17 @@
-// lib/core/station.dart
 class Station {
+  final int level;          // Spalte „Nr“
+  final String name;        // Spalte „Station“
+  final double latitude;    // Spalte „Latitude“
+  final double longitude;   // Spalte „Longitude“
+  final String imageAsset;  // Spalte „Bild“ (relativer Asset-Pfad)
+  final String description; // Spalte „Erklärung“
+
   Station({
     required this.level,
     required this.name,
     required this.latitude,
     required this.longitude,
+    required this.imageAsset,
     required this.description,
-    this.imageAsset = '',
   });
-
-  final int level;
-  final String name;
-  final double latitude;
-  final double longitude;
-  final String description;
-  final String imageAsset;
-
-  @override
-  bool operator ==(Object other) =>
-      other is Station && other.level == level;
-
-  @override
-  int get hashCode => level.hashCode;
 }
