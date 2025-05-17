@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:vokabeltrainer_app/core/station_description_provider.dart';
 import 'package:vokabeltrainer_app/ui/map_screen_progress.dart'; // Fortschritt-Karte
 
 class LevelUpScreen extends StatelessWidget {
@@ -37,38 +36,9 @@ class LevelUpScreen extends StatelessWidget {
                   color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 10),
-
-              // Erklärungstext aus der CSV
-              FutureBuilder<String?>(
-                future: StationDescriptionProvider.getExplanation(previousLevel),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const CircularProgressIndicator();
-                  } else if (snapshot.hasError) {
-                    return const Text(
-                      'Fehler beim Laden der Erklärung',
-                      style: TextStyle(fontSize: 16.0, color: Colors.red),
-                      textAlign: TextAlign.center,
-                    );
-                  } else {
-                    final explanation = snapshot.data ?? '';
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16.0, vertical: 8.0),
-                      child: Text(
-                        explanation,
-                        style: const TextStyle(fontSize: 18.0, color: Colors.white),
-                        textAlign: TextAlign.center,
-                      ),
-                    );
-                  }
-                },
-              ),
-
               const SizedBox(height: 24),
 
-              // Nur noch der Button für die Fortschritt-Karte
+              // Button für die Fortschritts-Karte
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).push(
@@ -76,7 +46,7 @@ class LevelUpScreen extends StatelessWidget {
                       builder: (_) => MapScreenProgress(
                         completedLevels: previousLevel, // erledigte Level
                         nextLevel: previousLevel,        // anstehendes Level
-                        levelImage: levelImage,          // <-- das aktuelle Bild übergeben!
+                        levelImage: levelImage,          // Bild an die Karte übergeben
                       ),
                     ),
                   );
