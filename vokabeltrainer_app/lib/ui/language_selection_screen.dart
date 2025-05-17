@@ -1,55 +1,70 @@
+// lib/ui/language_selection_screen.dart
 import 'package:flutter/material.dart';
-import 'package:vokabeltrainer_app/core/app_language.dart';
+import 'question_screen.dart';
 
-class LanguageSelectionScreen extends StatelessWidget {
-  const LanguageSelectionScreen({Key? key}) : super(key: key);
+class LanguageSelectionScreen extends StatefulWidget {
+  const LanguageSelectionScreen({super.key});
 
-  void _selectLanguage(BuildContext context, String languageCode) {
-    AppLanguage.setLanguage(languageCode);
-    Navigator.pushReplacementNamed(context, '/learn');
-  }
+  @override
+  State<LanguageSelectionScreen> createState() =>
+      _LanguageSelectionScreenState();
+}
+
+class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
+  static const _langs = [
+    {'name': 'Deutsch',    'code': 'de'},
+    {'name': 'English',    'code': 'en'},
+    {'name': 'Українська', 'code': 'uk'},
+    {'name': 'العربية',    'code': 'ar'},
+    {'name': 'دری (Dari)', 'code': 'fa'},
+  ];
+
+  String _src = 'de';
+  String _tgt = 'en';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Select your language / Sprache wählen'),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 20.0, horizontal: 10.0),
-                child: Text(
-                  'Bitte wähle deine Sprache\nPlease select your language',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center,
+      appBar: AppBar(title: const Text('Sprachauswahl')),
+      body: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            const Text('Ausgangssprache', style: TextStyle(fontSize: 18)),
+            DropdownButton<String>(
+              value: _src,
+              items: _langs
+                  .map((l) => DropdownMenuItem(
+                value: l['code'],
+                child: Text(l['name']!),
+              ))
+                  .toList(),
+              onChanged: (v) => setState(() => _src = v!),
+            ),
+            const SizedBox(height: 24),
+            const Text('Zielsprache', style: TextStyle(fontSize: 18)),
+            DropdownButton<String>(
+              value: _tgt,
+              items: _langs
+                  .map((l) => DropdownMenuItem(
+                value: l['code'],
+                child: Text(l['name']!),
+              ))
+                  .toList(),
+              onChanged: (v) => setState(() => _tgt = v!),
+            ),
+            const Spacer(),
+            ElevatedButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      QuestionScreen(source: _src, target: _tgt),
                 ),
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () => _selectLanguage(context, 'de'),
-                child: const Text('Deutsch'),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: () => _selectLanguage(context, 'en'),
-                child: const Text('English'),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: () => _selectLanguage(context, 'fa'),
-                child: const Text('Farsi / فارسی'),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton(
-                onPressed: () => _selectLanguage(context, 'uk'),
-                child: const Text('Ukrainisch / Українська'),
-              ),
-            ],
-          ),
+              child: const Text('Start'),
+            ),
+          ],
         ),
       ),
     );

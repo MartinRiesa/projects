@@ -3,20 +3,18 @@ import 'package:vokabeltrainer_app/core/latlon.dart';
 import '../core/station_loader.dart';
 import 'widgets/germany_map_with_progress_interactive.dart';
 import 'station_info_dialog.dart';
-import 'package:vokabeltrainer_app/core/station_description_multilang_provider.dart';
+import 'package:vokabeltrainer_app/core/station_description_provider.dart';
 
 class MapScreenProgress extends StatefulWidget {
   final int completedLevels;
   final int nextLevel;
   final ImageProvider? levelImage;
-  final String languageCode; // <--- NEU: Sprache
 
   const MapScreenProgress({
     Key? key,
     required this.completedLevels,
     required this.nextLevel,
     this.levelImage,
-    this.languageCode = "de", // Standard: deutsch
   }) : super(key: key);
 
   @override
@@ -34,15 +32,16 @@ class _MapScreenProgressState extends State<MapScreenProgress> {
     );
   }
 
+  // Holt das Bild zur Station, passend zum Index (Level/Station 1 = 1.jpg)
   ImageProvider? getImageForStation(int index) {
     if (index < 0) return null;
     final assetPath = 'assets/images/${index + 1}.jpg';
     return AssetImage(assetPath);
   }
 
-  Future<String> getDescriptionForStation(int index) {
-    // Beachte: Levels in CSV sind 1-basiert!
-    return StationDescriptionMultilangProvider.getDescription(index + 1, widget.languageCode);
+  // Holt die Beschreibung wie gehabt
+  Future<String?> getDescriptionForStation(int index) {
+    return StationDescriptionProvider.getExplanation(index + 1);
   }
 
   @override
@@ -87,6 +86,7 @@ class _MapScreenProgressState extends State<MapScreenProgress> {
                   },
                 ),
                 const SizedBox(height: 20),
+                // Unter der Karte: Bild + Beschreibung der aktuellen Station (letztes geschafftes Level)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 6.0),
                   child: Column(
@@ -112,7 +112,7 @@ class _MapScreenProgressState extends State<MapScreenProgress> {
                           },
                         ),
                       const SizedBox(height: 10),
-                      FutureBuilder<String>(
+                      FutureBuilder<String?>(
                         future: getDescriptionForStation(currentIndex),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
