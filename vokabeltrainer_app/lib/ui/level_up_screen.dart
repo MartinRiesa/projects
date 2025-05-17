@@ -76,6 +76,7 @@ class LevelUpScreen extends StatelessWidget {
                       builder: (_) => MapScreenProgress(
                         completedLevels: previousLevel, // erledigte Level
                         nextLevel: previousLevel,        // anstehendes Level
+                        levelImage: levelImage,          // <-- das aktuelle Bild übergeben!
                       ),
                     ),
                   );

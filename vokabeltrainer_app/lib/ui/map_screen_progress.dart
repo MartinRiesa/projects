@@ -6,11 +6,13 @@ import 'widgets/germany_map_with_progress.dart';
 class MapScreenProgress extends StatefulWidget {
   final int completedLevels;
   final int nextLevel;
+  final ImageProvider? levelImage; // NEU: Das Bild
 
   const MapScreenProgress({
     Key? key,
     required this.completedLevels,
     required this.nextLevel,
+    this.levelImage, // optional
   }) : super(key: key);
 
   @override
@@ -42,12 +44,45 @@ class _MapScreenProgressState extends State<MapScreenProgress> {
             return const Center(child: Text('Fehler beim Laden der Stationen.'));
           }
           final stations = snapshot.data!;
-          return GermanyMapWithProgress(
-            stations: stations,
-            completedLevels: widget.completedLevels,
-            nextLevel: widget.nextLevel,
-            assetPath: 'assets/images/germany_map.png',
-            mapScale: 1.15, // NEU: Karte noch etwas größer
+
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              if (widget.levelImage != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 16.0, bottom: 8),
+                  child: Container(
+                    height: 120, // Größe nach Wunsch anpassen!
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 8,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    clipBehavior: Clip.hardEdge,
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9,
+                      child: Image(
+                        image: widget.levelImage!,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                ),
+              Expanded(
+                child: GermanyMapWithProgress(
+                  stations: stations,
+                  completedLevels: widget.completedLevels,
+                  nextLevel: widget.nextLevel,
+                  assetPath: 'assets/images/germany_map.png',
+                  mapScale: 1.15, // Maximale Karte
+                ),
+              ),
+            ],
           );
         },
       ),
