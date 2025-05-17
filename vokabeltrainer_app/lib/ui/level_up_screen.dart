@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vokabeltrainer_app/core/station_description_provider.dart';
-import 'package:vokabeltrainer_app/ui/map_screen_with_continue.dart';
+import 'package:vokabeltrainer_app/ui/map_screen_static_marker.dart';
 
 class LevelUpScreen extends StatelessWidget {
   final int previousLevel;
@@ -18,7 +18,6 @@ class LevelUpScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        // Hintergrundbild für das Level
         decoration: BoxDecoration(
           image: DecorationImage(
             image: levelImage,
@@ -39,11 +38,9 @@ class LevelUpScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-
               // Erklärungstext aus der CSV
               FutureBuilder<String?>(
-                future:
-                StationDescriptionProvider.getExplanation(previousLevel),
+                future: StationDescriptionProvider.getExplanation(previousLevel),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const CircularProgressIndicator();
@@ -60,32 +57,30 @@ class LevelUpScreen extends StatelessWidget {
                           horizontal: 16.0, vertical: 8.0),
                       child: Text(
                         explanation,
-                        style:
-                        const TextStyle(fontSize: 18.0, color: Colors.white),
+                        style: const TextStyle(fontSize: 18.0, color: Colors.white),
                         textAlign: TextAlign.center,
                       ),
                     );
                   }
                 },
               ),
-
               const SizedBox(height: 20),
-
-              // Button „Karte“ – öffnet MapScreenWithContinue
+              // Button „Deutschlandkarte ansehen“
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
+                  // Optional: Bestimme die Stations-Anzahl dynamisch und prüfe Bereich
+                  // Alternativ kannst du (schneller): direkt die Map öffnen und im MapScreen prüfen lassen (wie bisher)!
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) =>
-                          MapScreenWithContinue(onContinue: onContinue),
+                      builder: (_) => MapScreenStaticMarker(
+                        stationIndex: previousLevel - 1, // Index, Level 1 = Index 0
+                      ),
                     ),
                   );
                 },
-                child: const Text('Karte'),
+                child: const Text('Deutschlandkarte ansehen'),
               ),
-
               const SizedBox(height: 20),
-
               // Button „Weiter“ – führt ins nächste Level
               ElevatedButton(
                 onPressed: onContinue,

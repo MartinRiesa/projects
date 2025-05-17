@@ -23,3 +23,4 @@ flutter:
     - assets/images/
     - assets/Vokabeln alle.csv    # ← Hier wird Deine CSV eingebunden
     - assets/Stationenbeschreibung-englisch.csv
+    - assets/images/germany_map.png

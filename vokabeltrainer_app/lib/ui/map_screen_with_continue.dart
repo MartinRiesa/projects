@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:vokabeltrainer_app/ui/widgets/map_with_markers.dart';
+import 'package:vokabeltrainer_app/ui/widgets/germany_map_with_markers.dart';
 
+/// Zeigt die Deutschlandkarte mit Markern an und verfügt über einen
+/// „Weiter“-Button, der dieselbe Aktion wie im Level-Up-Screen ausführt.
 class MapScreenWithContinue extends StatelessWidget {
   /// Callback, der das nächste Level öffnet.
   final VoidCallback onContinue;
@@ -10,12 +12,14 @@ class MapScreenWithContinue extends StatelessWidget {
     required this.onContinue,
   }) : super(key: key);
 
-  // Feste Markerkoordinaten aus der Aufgabenstellung
-  static const _points = [
-    LatLon(50.1096, 8.6724),
-    LatLon(48.7650, 11.4257),
-    LatLon(54.3126, 13.0929),
+  // ---- Marker-Koordinaten -----------------------------------------------
+  // Von dir angeliefert: ganzzahlige Werte → / 10000  ⇒ Dezimalgrad
+  static const _markerPoints = <LatLon>[
+    LatLon(50.1096, 8.6724),   // Frankfurt a. M.
+    LatLon(48.7650, 11.4257),  // Nähe Regensburg
+    LatLon(54.3126, 13.0929),  // Nähe Stralsund/Rügen
   ];
+  // ------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -29,11 +33,11 @@ class MapScreenWithContinue extends StatelessWidget {
           Expanded(
             child: InteractiveViewer(
               maxScale: 5.0,
-              child: MapWithMarkers(markers: _points),
+              child: GermanyMapWithMarkers(points: _markerPoints),
             ),
           ),
 
-          // Weiter-Button am unteren Rand
+          // „Weiter“-Button
           SafeArea(
             top: false,
             child: Padding(
@@ -42,8 +46,10 @@ class MapScreenWithContinue extends StatelessWidget {
                 width: double.infinity,
                 child: ElevatedButton(
                   onPressed: () {
-                    onContinue();          // nächstes Level
-                    Navigator.of(context).pop(); // Karte schließen
+                    // zuerst nächste Station öffnen …
+                    onContinue();
+                    // … und anschließend diese Karte schließen
+                    Navigator.of(context).pop();
                   },
                   child: const Text('Weiter'),
                 ),
