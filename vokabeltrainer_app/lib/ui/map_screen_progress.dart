@@ -30,7 +30,6 @@ class _MapScreenProgressState extends State<MapScreenProgress> {
     _stationsFuture = StationLoader.loadStationsFromCSV(
       'assets/Stationenbeschreibung-englisch.csv',
     );
-    // Stationen und Level sind meist 1-basiert: Beschreibung für completedLevels
     _stationDescriptionFuture = StationDescriptionProvider.getExplanation(widget.completedLevels);
   }
 
@@ -53,21 +52,34 @@ class _MapScreenProgressState extends State<MapScreenProgress> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                const SizedBox(height: 18),
+                // Die große Karte: GANZ OBEN
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 16),
+                  child: GermanyMapWithProgress(
+                    stations: stations,
+                    completedLevels: widget.completedLevels,
+                    nextLevel: widget.nextLevel,
+                    assetPath: 'assets/images/germany_map.png',
+                    mapScale: 1.15,
+                  ),
+                ),
+                // Das Bild (darunter)
                 if (widget.levelImage != null)
                   Center(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image(
-                        image: widget.levelImage!,
-                        fit: BoxFit.contain,
-                        width: MediaQuery.of(context).size.width * 0.92,
-                        height: 220,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8.0, bottom: 10),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image(
+                          image: widget.levelImage!,
+                          fit: BoxFit.contain,
+                          width: MediaQuery.of(context).size.width * 0.92,
+                          height: 220,
+                        ),
                       ),
                     ),
                   ),
-                const SizedBox(height: 16),
-                // Beschreibung der Station UNTER dem Bild
+                // Beschreibung (darunter)
                 FutureBuilder<String?>(
                   future: _stationDescriptionFuture,
                   builder: (context, snapshot) {
@@ -83,7 +95,7 @@ class _MapScreenProgressState extends State<MapScreenProgress> {
                       final explanation = snapshot.data ?? '';
                       return Padding(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 18.0, vertical: 4.0),
+                            horizontal: 18.0, vertical: 8.0),
                         child: Text(
                           explanation,
                           style: const TextStyle(
@@ -95,18 +107,6 @@ class _MapScreenProgressState extends State<MapScreenProgress> {
                       );
                     }
                   },
-                ),
-                const SizedBox(height: 14),
-                // Die große Karte: NICHT verkleinert
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 6),
-                  child: GermanyMapWithProgress(
-                    stations: stations,
-                    completedLevels: widget.completedLevels,
-                    nextLevel: widget.nextLevel,
-                    assetPath: 'assets/images/germany_map.png',
-                    mapScale: 1.15,
-                  ),
                 ),
                 const SizedBox(height: 30),
               ],
