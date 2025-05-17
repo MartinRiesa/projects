@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vokabeltrainer_app/core/station_description_provider.dart';
 import 'package:vokabeltrainer_app/ui/map_screen_static_marker.dart';
+import 'package:vokabeltrainer_app/ui/map_screen_progress.dart'; // NEU: Fortschritt-Karte
 
 class LevelUpScreen extends StatelessWidget {
   final int previousLevel;
@@ -38,6 +39,7 @@ class LevelUpScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
+
               // Erklärungstext aus der CSV
               FutureBuilder<String?>(
                 future: StationDescriptionProvider.getExplanation(previousLevel),
@@ -64,23 +66,42 @@ class LevelUpScreen extends StatelessWidget {
                   }
                 },
               ),
+
               const SizedBox(height: 20),
-              // Button „Deutschlandkarte ansehen“
+
+              // Button: Fortschritt-Karte
               ElevatedButton(
-                onPressed: () async {
-                  // Optional: Bestimme die Stations-Anzahl dynamisch und prüfe Bereich
-                  // Alternativ kannst du (schneller): direkt die Map öffnen und im MapScreen prüfen lassen (wie bisher)!
+                onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => MapScreenStaticMarker(
-                        stationIndex: previousLevel - 1, // Index, Level 1 = Index 0
+                      builder: (_) => MapScreenProgress(
+                        completedLevels: previousLevel, // alle erledigten Level
+                        nextLevel: previousLevel,        // das nächste anstehende Level
                       ),
                     ),
                   );
                 },
-                child: const Text('Deutschlandkarte ansehen'),
+                child: const Text('Deutschlandkarte – Fortschritt'),
               ),
+
+              const SizedBox(height: 12),
+
+              // Bisheriger Button „Deutschlandkarte ansehen“ – statische Einzelmarkierung
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => MapScreenStaticMarker(
+                        stationIndex: previousLevel - 1, // Index ggf. anpassen!
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('Deutschlandkarte (aktuelles Level)'),
+              ),
+
               const SizedBox(height: 20),
+
               // Button „Weiter“ – führt ins nächste Level
               ElevatedButton(
                 onPressed: onContinue,
