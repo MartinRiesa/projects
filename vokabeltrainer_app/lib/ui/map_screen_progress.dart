@@ -58,7 +58,13 @@ class _MapScreenProgressState extends State<MapScreenProgress> {
             return const Center(child: Text('Fehler beim Laden der Stationen.'));
           }
           final stations = snapshot.data!;
-          final currentIndex = widget.completedLevels;
+
+          // ---- HIER die wichtigste Änderung! ----
+          // Default: Das zuletzt geschaffte Level anzeigen (nicht das nächste!)
+          final int maxAvailableLevel = (widget.completedLevels > 0)
+              ? widget.completedLevels - 1
+              : 0;
+          int currentIndex = maxAvailableLevel;
 
           return SingleChildScrollView(
             child: Column(
@@ -71,6 +77,8 @@ class _MapScreenProgressState extends State<MapScreenProgress> {
                   nextLevel: widget.nextLevel,
                   assetPath: 'assets/images/germany_map.png',
                   mapScale: 1.15,
+                  // Punkte können weiterhin angewählt werden,
+                  // aber keine Vorschau auf das nächste Level.
                   onStationTap: (int index) async {
                     final img = getImageForStation(index);
                     final desc = await getDescriptionForStation(index);
@@ -86,7 +94,7 @@ class _MapScreenProgressState extends State<MapScreenProgress> {
                   },
                 ),
                 const SizedBox(height: 20),
-                // Unter der Karte: Bild + Beschreibung der aktuellen Station (letztes geschafftes Level)
+                // Unter der Karte: Bild + Beschreibung der aktuellen Station
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 18.0, vertical: 6.0),
                   child: Column(
@@ -99,14 +107,11 @@ class _MapScreenProgressState extends State<MapScreenProgress> {
                               return const Icon(Icons.broken_image, size: 120, color: Colors.grey);
                             }
                             return ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(12),
                               child: Image(
                                 image: imageProvider,
-                                fit: BoxFit.contain,
-                                width: MediaQuery.of(context).size.width * 0.92,
                                 height: 180,
-                                errorBuilder: (context, error, stackTrace) =>
-                                const Icon(Icons.broken_image, size: 120, color: Colors.grey),
+                                fit: BoxFit.cover,
                               ),
                             );
                           },
@@ -117,29 +122,20 @@ class _MapScreenProgressState extends State<MapScreenProgress> {
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
                             return const CircularProgressIndicator();
-                          } else if (snapshot.hasError) {
-                            return const Text(
-                              'Fehler beim Laden der Erklärung',
-                              style: TextStyle(fontSize: 16.0, color: Colors.red),
-                              textAlign: TextAlign.center,
-                            );
-                          } else {
-                            final explanation = snapshot.data ?? '';
-                            return Text(
-                              explanation,
-                              style: const TextStyle(
-                                fontSize: 18.0,
-                                color: Colors.black87,
-                              ),
-                              textAlign: TextAlign.center,
-                            );
                           }
+                          if (!snapshot.hasData || snapshot.data == null) {
+                            return const Text('Keine Beschreibung verfügbar.');
+                          }
+                          return Text(
+                            snapshot.data!,
+                            style: const TextStyle(fontSize: 15),
+                            textAlign: TextAlign.center,
+                          );
                         },
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 30),
               ],
             ),
           );
