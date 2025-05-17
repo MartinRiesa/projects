@@ -39,10 +39,6 @@ class GermanyMapWithProgressInteractive extends StatefulWidget {
 
 class _GermanyMapWithProgressInteractiveState extends State<GermanyMapWithProgressInteractive> {
   ui.Image? _mapImage;
-  double? _imageWidth;
-  double? _imageHeight;
-  bool _showAllMarkers = false;
-  Offset? _lastTapPosition;
 
   @override
   void initState() {
@@ -56,137 +52,168 @@ class _GermanyMapWithProgressInteractiveState extends State<GermanyMapWithProgre
     final image = await decodeImageFromList(bytes);
     setState(() {
       _mapImage = image;
-      _imageWidth = image.width.toDouble();
-      _imageHeight = image.height.toDouble();
     });
   }
 
-  Offset latLonToOffset(double lat, double lon, double width, double height) {
-    final x = ((lon - widget.lonMin) / (widget.lonMax - widget.lonMin)) * width;
-    final y = ((widget.latMax - lat) / (widget.latMax - widget.latMin)) * height;
+  Offset _project(LatLon p, double width, double height) {
+    final x = (p.lon - widget.lonMin) / (widget.lonMax - widget.lonMin) * width;
+    final y = (widget.latMax - p.lat) / (widget.latMax - widget.latMin) * height;
     return Offset(x, y);
-  }
-
-  int? getStationAtPosition(Offset tapPos, double width, double height) {
-    for (int i = 0; i < widget.stations.length; i++) {
-      final station = widget.stations[i];
-      final pos = latLonToOffset(station.lat, station.lon, width, height);
-      final rect = Rect.fromCircle(center: pos, radius: widget.markerDiameter / 2);
-      if (rect.contains(tapPos)) return i;
-    }
-    return null;
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_mapImage == null || _imageWidth == null || _imageHeight == null) {
+    if (_mapImage == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final width = _imageWidth! * widget.mapScale;
-    final height = _imageHeight! * widget.mapScale;
+    final screenWidth = MediaQuery.of(context).size.width * widget.mapScale;
+    final screenHeight = MediaQuery.of(context).size.height * widget.mapScale;
+    final mapRatio = _mapImage!.width / _mapImage!.height;
 
-    return InteractiveViewer(
-      minScale: 1.0,
-      maxScale: 12.0, // <--- HIER: Nur der Zoom wurde verändert!
-      child: Stack(
-          children: [
-          GestureDetector(
-          onTapDown: (details) {
-    setState(() {
-    _lastTapPosition = details.localPosition;
-    });
-    },
-      onTapUp: (details) {
-        final tapPos = details.localPosition;
-        final tappedStation = getStationAtPosition(tapPos, width, height);
-        if (tappedStation != null && tappedStation < widget.completedLevels) {
-          widget.onStationTap?.call(tappedStation);
-        }
-      },
+    double imgWidth = screenWidth;
+    double imgHeight = imgWidth / mapRatio;
+
+    if (imgHeight > screenHeight) {
+      imgHeight = screenHeight;
+      imgWidth = imgHeight * mapRatio;
+    }
+
+    final levelCount = widget.completedLevels > widget.nextLevel
+        ? widget.completedLevels
+        : widget.nextLevel + 1;
+    final List<LatLon> visibleStations = widget.stations.length >= levelCount
+        ? widget.stations.sublist(0, levelCount)
+        : widget.stations;
+
+    final positions =
+    visibleStations.map((s) => _project(s, imgWidth, imgHeight)).toList();
+
+    return Center(
       child: SizedBox(
-        width: width,
-        height: height,
-        child: RawImage(
-          image: _mapImage,
-          fit: BoxFit.fill,
-        ),
-      ),
-    ),
-            // Marker-Overlay (Level-Punkte, grüne/gelbe/graue Kreise)
-            ...List.generate(widget.stations.length, (index) {
-              final station = widget.stations[index];
-              final pos = latLonToOffset(
-                station.lat,
-                station.lon,
-                width,
-                height,
-              );
-
-              final isCompleted = index < widget.completedLevels;
-              final isNext = index == widget.nextLevel;
-              final color = isCompleted
-                  ? Colors.green
-                  : (isNext ? Colors.orange : Colors.grey.shade400);
-
-              return Positioned(
-                left: pos.dx - widget.markerDiameter / 2,
-                top: pos.dy - widget.markerDiameter / 2,
-                child: GestureDetector(
-                  onTap: (isCompleted && widget.onStationTap != null)
-                      ? () => widget.onStationTap!(index)
-                      : null,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
+        width: imgWidth,
+        height: imgHeight,
+        child: Stack(
+          children: [
+            Image.asset(
+              widget.assetPath,
+              width: imgWidth,
+              height: imgHeight,
+              fit: BoxFit.contain,
+            ),
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _ProgressLinePainter(
+                  positions: positions,
+                  completedLevels: widget.completedLevels,
+                  nextLevel: widget.nextLevel,
+                ),
+              ),
+            ),
+            ...List.generate(positions.length, (i) {
+              final pos = positions[i];
+              if (i < widget.completedLevels) {
+                return Positioned(
+                  left: pos.dx - widget.markerDiameter / 2,
+                  top: pos.dy - widget.markerDiameter / 2,
+                  child: GestureDetector(
+                    onTap: () {
+                      if (widget.onStationTap != null) {
+                        widget.onStationTap!(i);
+                      }
+                    },
+                    child: Container(
+                      width: widget.markerDiameter,
+                      height: widget.markerDiameter,
+                      decoration: BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.black54,
+                          width: 3,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black26,
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          )
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              } else if (i == widget.nextLevel) {
+                return Positioned(
+                  left: pos.dx - widget.markerDiameter / 2,
+                  top: pos.dy - widget.markerDiameter / 2,
+                  child: Container(
                     width: widget.markerDiameter,
                     height: widget.markerDiameter,
                     decoration: BoxDecoration(
-                      color: color.withOpacity(isCompleted ? 0.9 : 0.4),
+                      color: Colors.red,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: Colors.black.withOpacity(0.2),
-                        width: 2,
+                        color: Colors.black54,
+                        width: 3,
                       ),
                       boxShadow: [
-                        if (isNext)
-                          BoxShadow(
-                            color: Colors.orange.withOpacity(0.5),
-                            blurRadius: 18,
-                            spreadRadius: 3,
-                          ),
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 4,
+                          spreadRadius: 1,
+                        )
                       ],
                     ),
-                    child: Center(
-                      child: Text(
-                        '${index + 1}',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: widget.markerDiameter / 2.2,
-                        ),
-                      ),
-                    ),
                   ),
-                ),
-              );
+                );
+              } else {
+                return const SizedBox.shrink();
+              }
             }),
-
-            // Optional: letzte Tipp-Position anzeigen (für Entwicklung/Debug)
-            if (_lastTapPosition != null)
-              Positioned(
-                left: _lastTapPosition!.dx - 8,
-                top: _lastTapPosition!.dy - 8,
-                child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.6),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-              ),
           ],
+        ),
       ),
     );
   }
+}
+
+class _ProgressLinePainter extends CustomPainter {
+  final List<Offset> positions;
+  final int completedLevels;
+  final int nextLevel;
+
+  _ProgressLinePainter({
+    required this.positions,
+    required this.completedLevels,
+    required this.nextLevel,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (positions.length < 2) return;
+    final autobahn = Paint()
+      ..color = Colors.lightBlueAccent
+      ..strokeWidth = 14
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    final whiteLine = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    int lastIdx = nextLevel > completedLevels ? nextLevel : completedLevels - 1;
+    lastIdx = lastIdx.clamp(1, positions.length - 1);
+
+    for (int i = 0; i < lastIdx; i++) {
+      if (i + 1 < positions.length) {
+        canvas.drawLine(positions[i], positions[i + 1], autobahn);
+        canvas.drawLine(positions[i], positions[i + 1], whiteLine);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
