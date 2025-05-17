@@ -1,4 +1,3 @@
-// lib/ui/language_selection_screen.dart
 import 'package:flutter/material.dart';
 import 'question_screen.dart';
 
@@ -19,8 +18,7 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
     {'name': 'دری (Dari)', 'code': 'fa'},
   ];
 
-  String _src = 'de';
-  String _tgt = 'en';
+  String _src = 'de'; // Ausgangssprache, default ist Deutsch
 
   @override
   Widget build(BuildContext context) {
@@ -29,40 +27,54 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text('Ausgangssprache', style: TextStyle(fontSize: 18)),
+            const SizedBox(height: 16),
             DropdownButton<String>(
               value: _src,
-              items: _langs
-                  .map((l) => DropdownMenuItem(
-                value: l['code'],
-                child: Text(l['name']!),
-              ))
-                  .toList(),
-              onChanged: (v) => setState(() => _src = v!),
+              isExpanded: true,
+              items: _langs.map((lang) {
+                return DropdownMenuItem<String>(
+                  value: lang['code'],
+                  child: Text(lang['name']!),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _src = value!;
+                });
+              },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             const Text('Zielsprache', style: TextStyle(fontSize: 18)),
-            DropdownButton<String>(
-              value: _tgt,
-              items: _langs
-                  .map((l) => DropdownMenuItem(
-                value: l['code'],
-                child: Text(l['name']!),
-              ))
-                  .toList(),
-              onChanged: (v) => setState(() => _tgt = v!),
+            const SizedBox(height: 16),
+            // Statt Dropdown: Feste Anzeige "Deutsch"
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(4),
+                color: Colors.grey.shade100,
+              ),
+              child: const Text('Deutsch', style: TextStyle(fontSize: 16)),
             ),
             const Spacer(),
-            ElevatedButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) =>
-                      QuestionScreen(source: _src, target: _tgt),
-                ),
+            Center(
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => QuestionScreen(
+                        source: _src,
+                        target: 'de', // Zielsprache immer Deutsch
+                      ),
+                    ),
+                  );
+                },
+                child: const Text('Start'),
               ),
-              child: const Text('Start'),
             ),
           ],
         ),
