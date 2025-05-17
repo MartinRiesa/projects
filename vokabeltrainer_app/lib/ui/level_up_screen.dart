@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:vokabeltrainer_app/core/station_description_provider.dart';
-import 'package:vokabeltrainer_app/ui/map_screen_static_marker.dart';
-import 'package:vokabeltrainer_app/ui/map_screen_progress.dart'; // NEU: Fortschritt-Karte
+import 'package:vokabeltrainer_app/ui/map_screen_progress.dart'; // Fortschritt-Karte
 
 class LevelUpScreen extends StatelessWidget {
   final int previousLevel;
@@ -67,16 +66,16 @@ class LevelUpScreen extends StatelessWidget {
                 },
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 24),
 
-              // Button: Fortschritt-Karte
+              // Nur noch der Button für die Fortschritt-Karte
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => MapScreenProgress(
-                        completedLevels: previousLevel, // alle erledigten Level
-                        nextLevel: previousLevel,        // das nächste anstehende Level
+                        completedLevels: previousLevel, // erledigte Level
+                        nextLevel: previousLevel,        // anstehendes Level
                       ),
                     ),
                   );
@@ -84,23 +83,7 @@ class LevelUpScreen extends StatelessWidget {
                 child: const Text('Deutschlandkarte – Fortschritt'),
               ),
 
-              const SizedBox(height: 12),
-
-              // Bisheriger Button „Deutschlandkarte ansehen“ – statische Einzelmarkierung
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => MapScreenStaticMarker(
-                        stationIndex: previousLevel - 1, // Index ggf. anpassen!
-                      ),
-                    ),
-                  );
-                },
-                child: const Text('Deutschlandkarte (aktuelles Level)'),
-              ),
-
-              const SizedBox(height: 20),
+              const SizedBox(height: 28),
 
               // Button „Weiter“ – führt ins nächste Level
               ElevatedButton(

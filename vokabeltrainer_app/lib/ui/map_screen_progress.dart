@@ -4,8 +4,8 @@ import '../core/station_loader.dart';
 import 'widgets/germany_map_with_progress.dart';
 
 class MapScreenProgress extends StatefulWidget {
-  final int completedLevels; // wie viele Level sind erledigt?
-  final int nextLevel;       // Index (0-basiert) des nächsten Levels
+  final int completedLevels;
+  final int nextLevel;
 
   const MapScreenProgress({
     Key? key,
@@ -47,6 +47,7 @@ class _MapScreenProgressState extends State<MapScreenProgress> {
             completedLevels: widget.completedLevels,
             nextLevel: widget.nextLevel,
             assetPath: 'assets/images/germany_map.png',
+            mapScale: 1.15, // NEU: Karte noch etwas größer
           );
         },
       ),

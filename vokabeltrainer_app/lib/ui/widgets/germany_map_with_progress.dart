@@ -5,7 +5,7 @@ import 'package:vokabeltrainer_app/core/latlon.dart';
 
 class GermanyMapWithProgress extends StatefulWidget {
   final List<LatLon> stations;
-  final int completedLevels; // wie viele Level wurden vollendet (alle bis einschließlich completedLevels-1)
+  final int completedLevels; // erledigte Level (0-basiert)
   final int nextLevel; // das nächste anstehende Level (0-basiert)
   final String assetPath;
   final double markerDiameter;
@@ -13,6 +13,7 @@ class GermanyMapWithProgress extends StatefulWidget {
   final double latMin;
   final double lonMin;
   final double lonMax;
+  final double mapScale; // NEU: Skalierung
 
   const GermanyMapWithProgress({
     Key? key,
@@ -20,11 +21,12 @@ class GermanyMapWithProgress extends StatefulWidget {
     required this.completedLevels,
     required this.nextLevel,
     required this.assetPath,
-    this.markerDiameter = 20,
+    this.markerDiameter = 32, // NEU: größere Marker
     this.latMax = 55.05,
     this.latMin = 47.27,
     this.lonMin = 5.87,
     this.lonMax = 15.04,
+    this.mapScale = 1.0, // NEU: Standard = 1 (Fullscreen)
   }) : super(key: key);
 
   @override
@@ -61,15 +63,30 @@ class _GermanyMapWithProgressState extends State<GermanyMapWithProgress> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final screenWidth = MediaQuery.of(context).size.width;
-    final scale = screenWidth * 0.9 / _mapImage!.width;
-    final imgWidth = _mapImage!.width * scale;
-    final imgHeight = _mapImage!.height * scale;
+    // NEU: Karte größer anzeigen
+    final screenWidth = MediaQuery.of(context).size.width * widget.mapScale;
+    final screenHeight = MediaQuery.of(context).size.height * widget.mapScale;
+    final mapRatio = _mapImage!.width / _mapImage!.height;
 
-    // Alle Stationen umrechnen
-    final positions = widget.stations
-        .map((s) => _project(s, imgWidth, imgHeight))
-        .toList();
+    double imgWidth = screenWidth;
+    double imgHeight = imgWidth / mapRatio;
+
+    if (imgHeight > screenHeight) {
+      imgHeight = screenHeight;
+      imgWidth = imgHeight * mapRatio;
+    }
+
+    // Nur so viele Stationen wie maximal Level anzeigen!
+    final levelCount = widget.completedLevels > widget.nextLevel
+        ? widget.completedLevels
+        : widget.nextLevel + 1;
+    final List<LatLon> visibleStations = widget.stations.length >= levelCount
+        ? widget.stations.sublist(0, levelCount)
+        : widget.stations;
+
+    // Punkte berechnen
+    final positions =
+    visibleStations.map((s) => _project(s, imgWidth, imgHeight)).toList();
 
     return Center(
       child: SizedBox(
@@ -77,14 +94,14 @@ class _GermanyMapWithProgressState extends State<GermanyMapWithProgress> {
         height: imgHeight,
         child: Stack(
           children: [
-            // Die Karten-PNG
+            // Karte
             Image.asset(
               widget.assetPath,
               width: imgWidth,
               height: imgHeight,
               fit: BoxFit.contain,
             ),
-            // Die Linie ("Autobahn") zwischen allen bisherigen Stationen und bis zum nächsten Level
+            // Autobahn-Linie (nur zwischen erreichten + aktuellem Punkt)
             Positioned.fill(
               child: CustomPaint(
                 painter: _ProgressLinePainter(
@@ -94,41 +111,44 @@ class _GermanyMapWithProgressState extends State<GermanyMapWithProgress> {
                 ),
               ),
             ),
-            // Punkte (Marker)
-            ...List.generate(widget.stations.length, (i) {
+            // Marker
+            ...List.generate(positions.length, (i) {
               final pos = positions[i];
-              Color color;
               if (i < widget.completedLevels) {
-                color = Colors.green;
+                return _buildMarker(pos, Colors.green, i == widget.nextLevel);
               } else if (i == widget.nextLevel) {
-                color = Colors.red;
+                return _buildMarker(pos, Colors.red, true);
               } else {
-                color = Colors.grey[400]!;
+                return const SizedBox.shrink(); // Keine grauen Marker!
               }
-              return Positioned(
-                left: pos.dx - widget.markerDiameter / 2,
-                top: pos.dy - widget.markerDiameter / 2,
-                child: Container(
-                  width: widget.markerDiameter,
-                  height: widget.markerDiameter,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.black54,
-                      width: 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black26,
-                        blurRadius: 4,
-                        spreadRadius: 1,
-                      )
-                    ],
-                  ),
-                ),
-              );
             }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMarker(Offset pos, Color color, bool isBig) {
+    final double size = isBig ? widget.markerDiameter * 1.1 : widget.markerDiameter;
+    return Positioned(
+      left: pos.dx - size / 2,
+      top: pos.dy - size / 2,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: color,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: Colors.black54,
+            width: 3,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 4,
+              spreadRadius: 1,
+            )
           ],
         ),
       ),
@@ -136,7 +156,6 @@ class _GermanyMapWithProgressState extends State<GermanyMapWithProgress> {
   }
 }
 
-// Die Autobahn-ähnliche Linie als CustomPainter
 class _ProgressLinePainter extends CustomPainter {
   final List<Offset> positions;
   final int completedLevels;
@@ -151,22 +170,21 @@ class _ProgressLinePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (positions.length < 2) return;
-
-    // Linie für abgeschlossene Levels (grün)
     final autobahn = Paint()
       ..color = Colors.lightBlueAccent
-      ..strokeWidth = 13
+      ..strokeWidth = 14
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
-    // Weißer Mittelstrich für Autobahn-Look
     final whiteLine = Paint()
       ..color = Colors.white
-      ..strokeWidth = 5
+      ..strokeWidth = 6
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
-    // Strecke alle Verbindungen bis zum nächsten Level
-    for (int i = 0; i < nextLevel; i++) {
+    int lastIdx = nextLevel > completedLevels ? nextLevel : completedLevels - 1;
+    lastIdx = lastIdx.clamp(1, positions.length - 1);
+
+    for (int i = 0; i < lastIdx; i++) {
       if (i + 1 < positions.length) {
         canvas.drawLine(positions[i], positions[i + 1], autobahn);
         canvas.drawLine(positions[i], positions[i + 1], whiteLine);
