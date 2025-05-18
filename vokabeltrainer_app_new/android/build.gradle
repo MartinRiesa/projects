@@ -1,0 +1,11 @@
+android {
+    compileSdkVersion 33  // Oder eine andere Version je nach deiner Konfiguration
+
+    defaultConfig {
+        applicationId "com.example.myapp"
+        minSdkVersion 21
+        targetSdkVersion 33
+        versionCode flutterVersionCode.toInteger()
+        versionName flutterVersionName
+    }
+}

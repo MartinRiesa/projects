@@ -1,0 +1,53 @@
+apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'flutter'
+
+android {
+    compileSdkVersion 33  // Oder eine andere Version je nach deiner Konfiguration
+
+    defaultConfig {
+        applicationId "com.example.vokabeltrainer_app_new"  // Ersetze mit deiner App-ID
+        minSdkVersion 21
+        targetSdkVersion 33
+        versionCode 1  // Setze deine Version hier
+        versionName "1.0"  // Setze deine Version hier
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('C:/dev/projects/vokabeltrainer_app_new/keystore/my-release-key.jks')  // Update with the actual keystore path
+            storePassword '#4tkJTnv'  // Keystore password
+            keyAlias 'my-key-alias'  // Key alias
+            keyPassword '#4tkJTnv'  // Key password
+        }
+    }
+
+    buildToolsVersion "33.0.0"
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+
+dependencies {
+    implementation 'androidx.appcompat:appcompat:1.4.1'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.1'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+    implementation 'com.google.firebase:firebase-analytics'
+    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'com.google.firebase:firebase-auth:21.0.5'
+    implementation 'com.google.firebase:firebase-firestore:24.0.2'
+    implementation 'com.google.firebase:firebase-messaging:23.0.0'
+    implementation 'io.flutter:flutter_embedding_debug:1.0.0'
+}
+
+apply plugin: 'com.google.gms.google-services'  // Ensure that Firebase services are properly included

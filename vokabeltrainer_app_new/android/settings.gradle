@@ -1,0 +1,17 @@
+rootProject.name = "vokabeltrainer_app_new"
+include ':app'
+
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
