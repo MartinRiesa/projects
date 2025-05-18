@@ -1,10 +1,7 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:vokabeltrainer_app/core/level_manager.dart';
-import 'package:vokabeltrainer_app/core/level_info_loader.dart';
 
 class QuizScreen extends StatelessWidget {
-  final int level;                 // Levelnummer
+  final int level;
   final int streak;
   final double blur;
   final ImageProvider levelImage;
@@ -15,7 +12,7 @@ class QuizScreen extends StatelessWidget {
   final int correctIndex;
   final int? wrongIndex;
   final bool awaitWrong;
-  final ValueChanged<int> onAnswer;
+  final void Function(int) onAnswer;
   final VoidCallback onNextWrong;
 
   const QuizScreen({
@@ -39,104 +36,98 @@ class QuizScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: FutureBuilder<String>(
-          future: LevelInfoLoader.nameFor(level),
-          builder: (c, snap) {
-            final name = snap.data ?? '';
-            return Text(
-              'Level $level – $name – '
-                  'Streak $streak/${LevelManager.levelGoal}',
-            );
-          },
-        ),
+        title: Text('Level $level'),
         actions: [
-          IconButton(icon: const Icon(Icons.more_vert), onPressed: onShowTts),
+          IconButton(
+            icon: const Icon(Icons.volume_up),
+            onPressed: onShowTts,
+          ),
         ],
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Bild mit Blur
-            AspectRatio(
-              aspectRatio: 16 / 9,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-                child: Image(image: levelImage, fit: BoxFit.cover),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          const SizedBox(height: 16),
+          // Bild mit Blur-Effekt
+          Stack(
+            children: [
+              Image(
+                image: levelImage,
+                width: double.infinity,
+                height: 180,
+                fit: BoxFit.cover,
               ),
+              if (blur > 0)
+                Positioned.fill(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // DIE VOKABEL (PROMPT), JETZT TRANSPARENT
+          Text(
+            prompt,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 22,
+              color: Colors.transparent, // Unsichtbar!
             ),
-
-            // Levelname über dem Bild
-            FutureBuilder<String>(
-              future: LevelInfoLoader.nameFor(level),
-              builder: (c, snap) {
-                final name = snap.data ?? '';
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    name,
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                );
-              },
-            ),
-
-            // Prompt + Lautsprecher
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Flexible(
-                    child: Text(
-                      prompt,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                          fontSize: 28, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  IconButton(
-                    iconSize: 32,
-                    icon: const Icon(Icons.volume_up),
-                    onPressed: onSpeak,
-                    onLongPress: onShowTts,
-                  ),
-                ],
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          // Streak & Vorlesen Button
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                streak.toString(),
+                style: const TextStyle(fontSize: 24),
               ),
-            ),
-
-            // Antwortbuttons
-            ...options.asMap().entries.map((e) {
-              final i = e.key;
-              final txt = e.value;
-              Color? bg;
-              if (awaitWrong) {
-                if (i == correctIndex) bg = Colors.green;
-                if (i == wrongIndex) bg = Colors.red;
+              IconButton(
+                icon: const Icon(Icons.volume_up),
+                onPressed: onSpeak,
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Antwortmöglichkeiten (Buttons)
+          ...List.generate(options.length, (idx) {
+            Color? buttonColor;
+            if (awaitWrong) {
+              if (idx == correctIndex) {
+                buttonColor = Colors.green[200];
+              } else if (idx == wrongIndex) {
+                buttonColor = Colors.red[200];
               }
-              return Padding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: bg,
-                    minimumSize: const Size.fromHeight(56),
-                  ),
-                  onPressed: () => onAnswer(i),
-                  child: Text(txt, style: const TextStyle(fontSize: 18)),
+            }
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6.0, horizontal: 24.0),
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: buttonColor ?? Colors.white,
+                  foregroundColor: Colors.black,
+                  minimumSize: const Size.fromHeight(48),
                 ),
-              );
-            }),
-            if (awaitWrong)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
-                child: ElevatedButton(
-                  onPressed: onNextWrong,
-                  child: const Text('Weiter'),
+                onPressed: awaitWrong ? null : () => onAnswer(idx),
+                child: Text(
+                  options[idx],
+                  style: const TextStyle(fontSize: 20),
                 ),
               ),
-          ],
-        ),
+            );
+          }),
+          if (awaitWrong)
+            Padding(
+              padding: const EdgeInsets.only(top: 24.0),
+              child: ElevatedButton(
+                onPressed: onNextWrong,
+                child: const Text('Weiter'),
+              ),
+            ),
+        ],
       ),
     );
   }
