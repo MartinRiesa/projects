@@ -56,86 +56,80 @@ class QuizScreen extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // Bild mit Blur
+            // Bild mit Blur (BoxFit.contain statt BoxFit.cover)
             AspectRatio(
               aspectRatio: 16 / 9,
               child: ImageFiltered(
                 imageFilter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-                child: Image(image: levelImage, fit: BoxFit.cover),
+                child: Image(image: levelImage, fit: BoxFit.contain),
               ),
             ),
 
             // Levelname über dem Bild
             FutureBuilder<String>(
               future: LevelInfoLoader.nameFor(level),
-              builder: (c, snap) {
-                final name = snap.data ?? '';
-                return Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    name,
-                    style: const TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                );
-              },
+              builder: (c, snap) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Text(
+                  snap.data ?? '',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
 
-            // Prompt + Lautsprecher
+            // Prompt
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Flexible(
+                  Expanded(
                     child: Text(
                       prompt,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.transparent, // <--- nur das geändert!
-                      ),
+                      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
                     ),
                   ),
-                  IconButton(
-                    iconSize: 32,
-                    icon: const Icon(Icons.volume_up),
-                    onPressed: onSpeak,
-                    onLongPress: onShowTts,
-                  ),
+                  IconButton(icon: const Icon(Icons.volume_up), onPressed: onSpeak),
                 ],
               ),
             ),
 
-            // Antwortbuttons
-            ...options.asMap().entries.map((e) {
-              final i = e.key;
-              final txt = e.value;
-              Color? bg;
-              if (awaitWrong) {
-                if (i == correctIndex) bg = Colors.green;
-                if (i == wrongIndex) bg = Colors.red;
-              }
-              return Padding(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: bg,
-                    minimumSize: const Size.fromHeight(56),
-                  ),
-                  onPressed: () => onAnswer(i),
-                  child: Text(txt, style: const TextStyle(fontSize: 18)),
-                ),
-              );
-            }),
+            // Auswahlmöglichkeiten
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: options.length,
+                itemBuilder: (context, index) {
+                  final isCorrect = correctIndex == index;
+                  final isWrong = wrongIndex == index;
+                  Color? color;
+                  if (isCorrect) color = Colors.green[200];
+                  if (isWrong) color = Colors.red[200];
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: color, // <-- Korrigiert!
+                        minimumSize: const Size.fromHeight(48),
+                        textStyle: const TextStyle(fontSize: 18),
+                      ),
+                      onPressed: awaitWrong && !isWrong
+                          ? null
+                          : () => onAnswer(index),
+                      child: Text(options[index]),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            // Bei Fehler: "Weiter"-Button
             if (awaitWrong)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                padding: const EdgeInsets.all(16.0),
                 child: ElevatedButton(
                   onPressed: onNextWrong,
-                  child: const Text('Weiter'),
+                  child: const Text("Weiter"),
                 ),
               ),
           ],
