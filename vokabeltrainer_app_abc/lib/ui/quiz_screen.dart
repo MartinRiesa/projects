@@ -92,7 +92,10 @@ class QuizScreen extends StatelessWidget {
                       prompt,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                          fontSize: 28, fontWeight: FontWeight.bold),
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.transparent, // <--- nur das geändert!
+                      ),
                     ),
                   ),
                   IconButton(
