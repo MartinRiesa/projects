@@ -91,7 +91,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
 
       setState(() {
         _awaitWrong = false;
-        _blur = _maxBlur;
+        _wrongIndex = null;
       });
       _speakIfNeeded();
     } catch (e) {
@@ -130,16 +130,6 @@ class _QuestionScreenState extends State<QuestionScreen> {
     }
   }
 
-  void _nextWrong() {
-    setState(() {
-      _blur = _maxBlur;
-      _question = _manager.nextQuestion();
-      _awaitWrong = false;
-      _wrongIndex = null;
-    });
-    _speakIfNeeded();
-  }
-
   void _nextLevel() {
     setState(() {
       _blur = _maxBlur;
@@ -156,64 +146,83 @@ class _QuestionScreenState extends State<QuestionScreen> {
     builder: (c) => AlertDialog(
       title: const Text('Vorlese-Einstellungen'),
       content: StatefulBuilder(
-        builder: (ctx, setLocal) => SwitchListTile(
-          title: const Text('Automatisch vorlesen'),
-          value: _autoTts,
-          onChanged: (v) {
-            setLocal(() => _autoTts = v);
-            setState(() => _autoTts = v);
-          },
-        ),
+        builder: (ctx, setState) {
+          return Column(
+            children: <Widget>[
+              ListTile(
+                title: const Text('Vorlesen aktivieren'),
+                trailing: Switch(
+                  value: _autoTts,
+                  onChanged: (value) {
+                    setState(() {
+                      _autoTts = value;
+                    });
+                  },
+                ),
+              ),
+            ],
+          );
+        },
       ),
-      actions: [
-        TextButton(
-          onPressed: Navigator.of(c).pop,
-          child: const Text('OK'),
-        ),
-      ],
     ),
   );
 
-  void _retry() {
-    setState(() {
-      _loadError = false;
-      _blur = _maxBlur;
-    });
-    _initManager();
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_loadError) {
-      return ErrorScreen(errorMessage: _errorMsg, onRetry: _retry);
-    }
-    if (_levelImg == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-    if (_awaitLevelUp) {
-      final prevLevel = (_manager.level - 1).clamp(1, _manager.level);
-      return LevelUpScreen(
-        previousLevel: prevLevel,
-        levelImage: _levelImg!,
-        onContinue: _nextLevel,
-      );
-    }
-    return QuizScreen(
-      level: _manager.level,
-      streak: _manager.streak,
-      blur: _blur,
-      levelImage: _levelImg!,
-      prompt: _question.prompt,
-      onSpeak: () => _speak(_question.prompt),
-      onShowTts: _showTtsPopup,
-      options: _question.options,
-      correctIndex: _question.correctIndex,
-      wrongIndex: _wrongIndex,
-      awaitWrong: _awaitWrong,
-      onAnswer: _check,
-      onNextWrong: _nextWrong,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Frage anzeigen'),
+        actions: <Widget>[
+          IconButton(
+            icon: const Icon(Icons.volume_up),
+            onPressed: () => _speakIfNeeded(),
+          ),
+        ],
+      ),
+      body: Center(
+        child: _loadError
+            ? Text(_errorMsg)
+            : _awaitLevelUp
+            ? Column(
+          children: [
+            Image(image: _levelImg!),
+            const Text('Level-Up!'),
+          ],
+        )
+            : _awaitWrong
+            ? Column(
+          children: <Widget>[
+            const Text('Falsche Antwort!'),
+            ElevatedButton(
+              child: const Text('Weiter'),
+              onPressed: _nextLevel,
+            ),
+          ],
+        )
+            : Column(
+          children: <Widget>[
+            const Text('Wähle die richtige Antwort:'),
+            // Hier wird die Frage versteckt, aber die TTS bleibt erhalten
+            // Text(_question.prompt), // Hier wird die Frage (Vokabel) nicht mehr angezeigt
+            ElevatedButton(
+              onPressed: () => _check(0),
+              child: Text(_question.options[0]),
+            ),
+            ElevatedButton(
+              onPressed: () => _check(1),
+              child: Text(_question.options[1]),
+            ),
+            ElevatedButton(
+              onPressed: () => _check(2),
+              child: Text(_question.options[2]),
+            ),
+            ElevatedButton(
+              onPressed: () => _check(3),
+              child: Text(_question.options[3]),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
