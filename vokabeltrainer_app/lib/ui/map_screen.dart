@@ -9,10 +9,10 @@ class MapScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     // Beispielhafte Stationen: Ersetze dies durch deine echte Logik!
     final List<LatLon> stations = [
-      LatLon(lat: 52.52, lon: 13.405),  // Berlin
-      LatLon(lat: 48.137, lon: 11.575), // München
-      LatLon(lat: 50.9375, lon: 6.9603), // Köln
-      LatLon(lat: 53.5511, lon: 9.9937), // Hamburg
+      LatLon(52.52, 13.405),  // Berlin
+      LatLon(48.137, 11.575), // München
+      LatLon(50.9375, 6.9603), // Köln
+      LatLon(53.5511, 9.9937), // Hamburg
     ];
 
     final int completedLevels = 2;

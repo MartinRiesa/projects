@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:vokabeltrainer_app/ui/widgets/germany_map_with_markers.dart';
+import 'package:vokabeltrainer_app/ui/widgets/germany_map_with_markers_auto.dart';
 
 /// Zeigt die Deutschlandkarte mit Markern an und verfügt über einen
 /// „Weiter“-Button, der dieselbe Aktion wie im Level-Up-Screen ausführt.
@@ -33,7 +33,10 @@ class MapScreenWithContinue extends StatelessWidget {
           Expanded(
             child: InteractiveViewer(
               maxScale: 5.0,
-              child: GermanyMapWithMarkers(points: _markerPoints),
+              child: GermanyMapWithMarkersAuto(
+                points: _markerPoints,
+                assetPath: 'assets/images/germany_map.png',
+              ),
             ),
           ),
 
